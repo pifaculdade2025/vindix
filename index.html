@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Sistema</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --surface: #1a1a1a;
+      --border: #2a2a2a;
+      --accent: #e8ff47;
+      --text: #f0f0f0;
+      --muted: #666;
+      --success-bg: #0d2e1a;
+      --success-text: #4ade80;
+      --error-bg: #2e0d0d;
+      --error-text: #f87171;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'DM Sans', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ─── LOGIN ─── */
+    #tela-login {
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+    }
+
+    .logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 40px;
+    }
+
+    .login-title {
+      font-size: 32px;
+      font-weight: 600;
+      line-height: 1.1;
+      margin-bottom: 8px;
+    }
+
+    .login-sub {
+      color: var(--muted);
+      font-size: 14px;
+      margin-bottom: 36px;
+    }
+
+    .field { margin-bottom: 16px; }
+
+    .field label {
+      display: block;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    .field input {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .field input:focus { border-color: var(--accent); }
+    .field input::placeholder { color: #444; }
+
+    .btn-login {
+      width: 100%;
+      margin-top: 8px;
+      padding: 15px;
+      background: var(--accent);
+      color: #0f0f0f;
+      border: none;
+      border-radius: 8px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+
+    .btn-login:hover { opacity: 0.9; }
+    .btn-login:active { transform: scale(0.99); }
+    .btn-login:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .mensagem {
+      margin-top: 14px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      font-size: 13px;
+      display: none;
+    }
+
+    .sucesso { background: var(--success-bg); color: var(--success-text); border: 1px solid #1a4d2e; }
+    .erro    { background: var(--error-bg);   color: var(--error-text);   border: 1px solid #4d1a1a; }
+
+    /* ─── SISTEMA ─── */
+    #tela-sistema {
+      display: none;
+      width: 100%;
+      min-height: 100vh;
+      flex-direction: column;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 32px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .topbar-logo {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    .topbar-user {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    .topbar-user span { color: var(--text); font-weight: 500; }
+
+    .btn-sair {
+      padding: 7px 14px;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--muted);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color 0.2s, color 0.2s;
+    }
+
+    .btn-sair:hover { border-color: var(--error-text); color: var(--error-text); }
+
+    .conteudo {
+      flex: 1;
+      padding: 40px 32px;
+      max-width: 860px;
+      margin: 0 auto;
+      width: 100%;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 32px;
+    }
+
+    .page-title { font-size: 24px; font-weight: 600; }
+    .page-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+    .btn-imprimir {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 20px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 8px;
+      color: var(--accent);
+      font-family: 'DM Sans', sans-serif;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-imprimir:hover { background: rgba(232,255,71,0.08); }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+    }
+
+    .card-label {
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      margin-bottom: 10px;
+    }
+
+    .card-value {
+      font-size: 28px;
+      font-weight: 600;
+      font-family: 'DM Mono', monospace;
+    }
+
+    .card-value.green  { color: var(--success-text); }
+    .card-value.yellow { color: var(--accent); }
+
+    .tabela-wrap {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .tabela-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+
+    table { width: 100%; border-collapse: collapse; }
+
+    th {
+      padding: 12px 20px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      border-bottom: 1px solid var(--border);
+    }
+
+    td {
+      padding: 14px 20px;
+      font-size: 14px;
+      border-bottom: 1px solid #1f1f1f;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .badge.pago     { background: var(--success-bg); color: var(--success-text); }
+    .badge.pendente { background: #2a2000; color: #facc15; }
+    .badge.cancelado{ background: var(--error-bg); color: var(--error-text); }
+  </style>
+</head>
+<body>
+
+  <!-- ── TELA DE LOGIN ── -->
+  <div id="tela-login">
+    <div class="logo">◆ Sistema</div>
+    <h1 class="login-title">Bem-vindo<br>de volta.</h1>
+    <p class="login-sub">Faça login para acessar o sistema.</p>
+
+    <div class="field">
+      <label>Usuário</label>
+      <input type="text" id="usuario" placeholder="seu.usuario" />
+    </div>
+
+    <div class="field">
+      <label>Senha</label>
+      <input type="password" id="senha" placeholder="••••••••" />
+    </div>
+
+    <button class="btn-login" id="btnLogin" onclick="fazerLogin()">Entrar</button>
+
+    <div class="mensagem" id="mensagem"></div>
+  </div>
+
+  <!-- ── TELA DO SISTEMA ── -->
+  <div id="tela-sistema">
+    <div class="topbar">
+      <div class="topbar-logo">◆ Sistema</div>
+      <div class="topbar-user">
+        Olá, <span id="nomeUsuario"></span>
+        <button class="btn-sair" onclick="sair()">Sair</button>
+      </div>
+    </div>
+
+    <div class="conteudo">
+      <div class="page-header">
+        <div>
+          <div class="page-title">Relatório de Vendas</div>
+          <div class="page-sub">Março 2026</div>
+        </div>
+        <button class="btn-imprimir" onclick="abrirRelatorio()">
+          🖨️ Imprimir Relatório
+        </button>
+      </div>
+
+      <div class="cards">
+        <div class="card">
+          <div class="card-label">Total de Vendas</div>
+          <div class="card-value yellow">R$ 8.450</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Pedidos</div>
+          <div class="card-value">24</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Recebido</div>
+          <div class="card-value green">R$ 6.200</div>
+        </div>
+      </div>
+
+      <div class="tabela-wrap">
+        <div class="tabela-header">Últimos pedidos</div>
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Cliente</th>
+              <th>Produto</th>
+              <th>Valor</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>001</td><td>João Silva</td><td>Produto A</td>
+              <td>R$ 450,00</td><td><span class="badge pago">Pago</span></td>
+            </tr>
+            <tr>
+              <td>002</td><td>Maria Santos</td><td>Produto B</td>
+              <td>R$ 320,00</td><td><span class="badge pendente">Pendente</span></td>
+            </tr>
+            <tr>
+              <td>003</td><td>Pedro Costa</td><td>Produto C</td>
+              <td>R$ 780,00</td><td><span class="badge pago">Pago</span></td>
+            </tr>
+            <tr>
+              <td>004</td><td>Ana Oliveira</td><td>Produto A</td>
+              <td>R$ 450,00</td><td><span class="badge cancelado">Cancelado</span></td>
+            </tr>
+            <tr>
+              <td>005</td><td>Carlos Lima</td><td>Produto D</td>
+              <td>R$ 1.200,00</td><td><span class="badge pago">Pago</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    async function fazerLogin() {
+      const usuario = document.getElementById('usuario').value.trim();
+      const senha   = document.getElementById('senha').value.trim();
+      const btn     = document.getElementById('btnLogin');
+
+      if (!usuario || !senha) {
+        mostrarMensagem('Preencha todos os campos.', 'erro');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = 'Verificando...';
+
+      try {
+        const url = `http://localhost:8080/login?usuario=${encodeURIComponent(usuario)}&senha=${encodeURIComponent(senha)}`;
+        const response = await fetch(url);
+        if (!response.ok) throw new Error('Erro no servidor');
+        const data = await response.json();
+
+        if (data.sucesso) {
+          document.getElementById('tela-login').style.display = 'none';
+          document.getElementById('tela-sistema').style.display = 'flex';
+          document.getElementById('nomeUsuario').textContent = data.nome;
+        } else {
+          mostrarMensagem(`❌ ${data.mensagem}`, 'erro');
+        }
+      } catch (err) {
+        mostrarMensagem('Não foi possível conectar ao servidor.', 'erro');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Entrar';
+      }
+    }
+
+    function abrirRelatorio() {
+      const codigo = 56; // ← código do registro
+      window.open(`http://localhost:8080/imprimir?codigo=${codigo}`, '_blank');
+    }
+
+    function sair() {
+      document.getElementById('tela-sistema').style.display = 'none';
+      document.getElementById('tela-login').style.display = 'block';
+      document.getElementById('usuario').value = '';
+      document.getElementById('senha').value = '';
+      document.getElementById('mensagem').style.display = 'none';
+    }
+
+    function mostrarMensagem(texto, tipo) {
+      const msg = document.getElementById('mensagem');
+      msg.textContent = texto;
+      msg.className = `mensagem ${tipo}`;
+      msg.style.display = 'block';
+    }
+
+    document.addEventListener('keypress', e => {
+      if (e.key === 'Enter') fazerLogin();
+    });
+  </script>
+
+</body>
+</html>
