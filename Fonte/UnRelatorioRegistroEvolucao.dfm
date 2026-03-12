@@ -31,7 +31,7 @@ object frmRelatorioRegistroEvolucao: TfrmRelatorioRegistroEvolucao
       Left = 33
       Top = 28
       Width = 926
-      Height = 357
+      Height = 354
       BandType = btTitle
       Font.Charset = DEFAULT_CHARSET
       Font.Color = clBlack
@@ -79,9 +79,9 @@ object frmRelatorioRegistroEvolucao: TfrmRelatorioRegistroEvolucao
         Text = ''
       end
       object RLLabel1: TRLLabel
-        Left = 347
+        Left = 324
         Top = 0
-        Width = 232
+        Width = 278
         Height = 65
         Align = faCenterTop
         Alignment = taCenter
@@ -28353,7 +28353,7 @@ object frmRelatorioRegistroEvolucao: TfrmRelatorioRegistroEvolucao
         Left = 0
         Top = 335
         Width = 545
-        Height = 22
+        Height = 19
         Align = faLeftBottom
         Behavior = [beSiteExpander]
         Borders.Sides = sdCustom
@@ -28370,7 +28370,7 @@ object frmRelatorioRegistroEvolucao: TfrmRelatorioRegistroEvolucao
       end
       object RLMemo2: TRLMemo
         Left = 744
-        Top = 335
+        Top = 332
         Width = 182
         Height = 22
         Align = faRightBottom
@@ -28390,7 +28390,7 @@ object frmRelatorioRegistroEvolucao: TfrmRelatorioRegistroEvolucao
     end
     object RLBand2: TRLBand
       Left = 33
-      Top = 385
+      Top = 382
       Width = 926
       Height = 24
       BeforePrint = RLBand2BeforePrint
@@ -28438,22 +28438,38 @@ object frmRelatorioRegistroEvolucao: TfrmRelatorioRegistroEvolucao
     CachedUpdates = True
     SQL.Strings = (
       'SELECT '
-      'REGISTROS_EVOLUCAO.*,                     '
-      'EXTRACT(YEAR FROM REGISTROS_EVOLUCAO.DATA) ANO,'
+      'CONSULTAS.*,  '
+      'DATEDIFF(YEAR FROM PACIENTE.DT_NASC TO CONSULTAS.DT_HR_SESSAO) -'
+      'CASE'
+      
+        '    WHEN EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(MO' +
+        'NTH FROM PACIENTE.DT_NASC)'
+      '      OR ('
+      
+        '           EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) = EXTRACT(' +
+        'MONTH FROM PACIENTE.DT_NASC)'
+      
+        '       AND EXTRACT(DAY FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(DA' +
+        'Y FROM PACIENTE.DT_NASC)'
+      '         )'
+      '    THEN 1'
+      '    ELSE 0'
+      'END as IDADE_PACIENTE,                  '
+      'EXTRACT(YEAR FROM CONSULTAS.DT_HR_SESSAO) ANO,'
       'PACIENTE.NOME NOME_PACIENTE,'
       'TERAPEUTA.NOME NOME_TERAPEUTA,'
-      'FUNCOES.DESCRICAO'
-      'FROM REGISTROS_EVOLUCAO'
+      'ESPECIALIDADES.DESCRICAO'
+      'FROM CONSULTAS'
       
-        'LEFT JOIN CADASTRO PACIENTE ON (PACIENTE.CODIGO = REGISTROS_EVOL' +
-        'UCAO.CODPACIENTE)'
+        'LEFT JOIN CADASTROS PACIENTE ON (PACIENTE.ID = CONSULTAS.ID_PACI' +
+        'ENTE)'
       
-        'LEFT JOIN CADASTRO TERAPEUTA ON (TERAPEUTA.CODIGO = REGISTROS_EV' +
-        'OLUCAO.CODTERAPEUTA)'
+        'LEFT JOIN CADASTROS TERAPEUTA ON (TERAPEUTA.ID = CONSULTAS.ID_TE' +
+        'RAPEUTA)'
       
-        'LEFT JOIN FUNCOES ON (FUNCOES.CODIGO = REGISTROS_EVOLUCAO.COD_ES' +
-        'PECIALIDADE_FUNCAO)'
-      'WHERE REGISTROS_EVOLUCAO.CODIGO = :pCod ')
+        'LEFT JOIN ESPECIALIDADES ON (ESPECIALIDADES.ID = CONSULTAS.ID_ES' +
+        'PECIALIDADE)'
+      'WHERE CONSULTAS.ID = :pCod ')
     Left = 872
     Top = 80
     ParamData = <

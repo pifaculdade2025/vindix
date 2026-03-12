@@ -16,37 +16,125 @@ uses
   FireDAC.Phys.FB,
   FireDAC.Phys.FBDef,
   FireDAC.VCLUI.Wait,
+  System.Generics.Collections,
   FireDAC.Comp.Client;
 
 var
-  Conexao: TFDConnection;
+  ConexaoPrincipal: TFDConnection;
+  Conexoes: TDictionary<Integer, TFDConnection>;
+  qUsuarios: TFDQuery;  
+  qDataBDPrincipal: TFDQuery;
 
-procedure ConectarBanco;
-procedure DesconectarBanco;
+procedure ConectarBancoPrincipal;
+procedure DesconectarBancoPrincipal;
+procedure CriarDataSetUsuarios;
+function ConectarBancoEmpresa(piCodEmpresa: Integer): TFDConnection;
+function GetConexaoUsuario(CodigoUsuario: Integer): TFDConnection;
+function RecarregarUsuarios(piCodUsuario: integer): boolean;
 
 implementation
 
-procedure ConectarBanco;
+procedure ConectarBancoPrincipal;
 begin
-  Conexao := TFDConnection.Create(nil);
+  ConexaoPrincipal := TFDConnection.Create(nil);
 
-  Conexao.Params.DriverID   := 'FB';
-  Conexao.Params.Database   := 'C:\Humanizare\HUMANIZARE.FDB'; //  caminho do banco
-  Conexao.Params.UserName   := 'SYSDBA';
-  Conexao.Params.Password   := 'masterkey';
-  Conexao.Params.Add('CharacterSet=UTF8');
+  ConexaoPrincipal.Params.DriverID   := 'FB';
+  ConexaoPrincipal.Params.Database   := 'C:\VindiX\VINDIX.FDB'; //  Conectar banco principal
+  ConexaoPrincipal.Params.UserName   := 'SYSDBA';
+  ConexaoPrincipal.Params.Password   := 'masterkey';
+  ConexaoPrincipal.Params.Add('CharacterSet=UTF8');
 
-  Conexao.LoginPrompt := False;
-  Conexao.Connected   := True;
+  ConexaoPrincipal.LoginPrompt := False;
+  ConexaoPrincipal.Connected   := True;
+  CriarDataSetUsuarios;
+
+  qDataBDPrincipal := TFDQuery.Create(nil);  
+  qDataBDPrincipal.Connection := ConexaoPrincipal;   
 end;
 
-procedure DesconectarBanco;
+procedure DesconectarBancoPrincipal;
 begin
-  if Assigned(Conexao) then
+  if Assigned(ConexaoPrincipal) then
   begin
-    Conexao.Connected := False;
-    Conexao.Free;
+    ConexaoPrincipal.Connected := False;
+    ConexaoPrincipal.Free;
   end;
 end;
+
+procedure CriarDataSetUsuarios;
+begin
+  qUsuarios := TFDQuery.Create(nil);
+  qUsuarios.Connection := ConexaoPrincipal;
+  qUsuarios.SQL.Text := 'SELECT ID, EMPRESA FROM USUARIOS ';
+  qUsuarios.Open;
+end;
+
+function RecarregarUsuarios(piCodUsuario: integer): boolean;
+begin
+  qUsuarios.Refresh;
+  if piCodUsuario > 0 then
+    result := qUsuarios.Locate('ID', piCodUsuario, [])
+  else
+    result := false;
+end;
+
+function GetConexaoUsuario(CodigoUsuario: Integer): TFDConnection;
+begin
+  if not qUsuarios.Locate('ID', CodigoUsuario, []) then
+    if not RecarregarUsuarios(CodigoUsuario) then
+    begin
+      result := nil;
+      Exit;
+    end;
+
+  qUsuarios.Locate('ID', CodigoUsuario, []);
+
+  // retorna a conexão já aberta
+  if Conexoes.ContainsKey(qUsuarios.FieldByName('EMPRESA').AsInteger) then
+    Result := Conexoes[qUsuarios.FieldByName('EMPRESA').AsInteger]
+  else
+    Result := ConectarBancoEmpresa(qUsuarios.FieldByName('EMPRESA').AsInteger);
+end;
+
+function ConectarBancoEmpresa(piCodEmpresa: Integer): TFDConnection;
+var
+  qCaminhoBD: TFDQuery;
+  Conn: TFDConnection;
+begin
+  qCaminhoBD := TFDQuery.Create(nil);
+  Conn := nil;
+  try
+    try
+      qCaminhoBD.Connection := ConexaoPrincipal;
+      qCaminhoBD.SQL.Text := 'SELECT ID, CAMINHO_BD FROM EMPRESAS WHERE ID = :pID';
+      qCaminhoBD.ParamByName('pID').AsInteger := piCodEmpresa;
+      qCaminhoBD.Open;
+
+      Conn := TFDConnection.Create(nil);
+      Conn.Params.DriverID := 'FB';
+      Conn.Params.Database := qCaminhoBD.FieldByName('CAMINHO_BD').AsString;
+      Conn.Params.UserName := 'SYSDBA';
+      Conn.Params.Password := 'masterkey';       
+      Conn.Params.Add('CharacterSet=UTF8');
+      Conn.Connected := True;
+      Conexoes.Add(qCaminhoBD.FieldByName('ID').AsInteger, Conn);
+    except
+      Conn.Free;
+      Conn := nil;
+      raise;
+    end;
+  finally
+    qCaminhoBD.Free;
+  end;
+  result := Conn;
+end;
+
+initialization
+  Conexoes := TDictionary<Integer, TFDConnection>.Create;
+
+finalization
+  for var Conn in Conexoes.Values do
+    Conn.Free;
+  Conexoes.Free;
 
 end.

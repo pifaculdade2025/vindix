@@ -92,6 +92,7 @@
         <VerInfo_Locale>1033</VerInfo_Locale>
         <DCC_DcuOutput>.\Executaveis\Debug\</DCC_DcuOutput>
         <OutputExt>eze</OutputExt>
+        <DCC_RangeChecking>false</DCC_RangeChecking>
     </PropertyGroup>
     <PropertyGroup Condition="'$(Cfg_2)'!=''">
         <DCC_LocalDebugSymbols>false</DCC_LocalDebugSymbols>

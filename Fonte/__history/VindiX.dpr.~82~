@@ -1,0 +1,236 @@
+program VindiX;
+
+{$APPTYPE GUI}
+{$R *.res}
+
+uses
+  System.SysUtils,
+  System.IOUtils,
+  Winapi.Windows,
+  Vcl.Forms,
+  IdHTTPServer,
+  IdCustomHTTPServer,
+  IdContext,
+  System.JSON,
+  System.Classes,
+  RLReport,
+  RLFilters,
+  RLPDFFilter,
+  Winapi.ActiveX,
+  RLUtils,
+  System.Variants,
+  UnConexao in 'UnConexao.pas',
+  UnRelatorioRegistroEvolucao in 'UnRelatorioRegistroEvolucao.pas',
+  FireDAC.Comp.Client {frmRelatorioRegistroEvolucao};
+
+type
+  TServidor = class
+    Server: TIdHTTPServer;
+    procedure CommandGet(AContext: TIdContext;
+      ARequestInfo: TIdHTTPRequestInfo;
+      AResponseInfo: TIdHTTPResponseInfo);
+    procedure Iniciar;
+    procedure Parar;
+  end;
+
+function ValidarLogin(Usuario, Senha: string): string;
+var
+  JSON: TJSONObject;
+begin
+  JSON := TJSONObject.Create;
+  try
+    qDataBDPrincipal.Close;
+    qDataBDPrincipal.SQL.Text := 'SELECT ID, NOME FROM USUARIOS WHERE LOGIN = :psLogin AND SENHA = :piSenha';
+    qDataBDPrincipal.ParamByName('psLogin').AsString := Usuario;
+    qDataBDPrincipal.ParamByName('piSenha').AsString := Senha;
+    qDataBDPrincipal.Open;
+
+    if qDataBDPrincipal.RecordCount > 0 then
+    begin
+      JSON.AddPair('sucesso', TJSONBool.Create(True));
+      JSON.AddPair('mensagem', 'Login realizado com sucesso!');
+      JSON.AddPair('nome', qDataBDPrincipal.FieldByName('NOME').AsString);
+      JSON.AddPair('codigo', TJSONNumber.Create(qDataBDPrincipal.FieldByName('ID').AsInteger));
+    end
+    else
+    begin
+      JSON.AddPair('sucesso', TJSONBool.Create(False));
+      JSON.AddPair('mensagem', 'Usuário ou senha incorretos.');
+    end;
+
+    Result := JSON.ToString;
+  finally
+    JSON.Free;
+  end;
+end;
+
+function CarregarConsultas(CodigoUsuario: Integer): String;
+begin
+  if GetConexaoUsuario(CodigoUsuario) = nil then
+  begin
+    Result := '{"erro": "Usuario nao encontrado"}';
+    Exit;
+  end;
+
+  var qConsultas := TFDQuery.Create(nil);
+  var JSON := TJSONArray.Create;
+  try
+    qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
+    qConsultas.SQL.Text :=
+      ' SELECT '+
+      '    CONSULTAS.ID, '+
+      '    PACIENTES.NOME AS PACIENTE, '+
+      '    TERAPEUTAS.NOME AS TERAPEUTA, '+
+      '    CONSULTAS.DT_HR_SESSAO DATA_HORA, '+
+      '    ESPECIALIDADES.DESCRICAO AS ESPECIALIDADE ' +
+      ' FROM CONSULTAS  ' +
+      '    JOIN CADASTROS PACIENTES ON PACIENTES.ID = CONSULTAS.ID_PACIENTE ' +
+      '    JOIN CADASTROS TERAPEUTAS ON TERAPEUTAS.ID = CONSULTAS.ID_TERAPEUTA ' +
+      '    JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE ' +
+      'ORDER BY CONSULTAS.DT_HR_SESSAO DESC';
+    qConsultas.Open;
+
+    while not qConsultas.Eof do
+    begin
+      var Row := TJSONObject.Create;
+      Row.AddPair('id', TJSONNumber.Create(qConsultas.FieldByName('ID').AsInteger));
+      Row.AddPair('paciente', qConsultas.FieldByName('PACIENTE').AsString);
+      Row.AddPair('terapeuta', qConsultas.FieldByName('TERAPEUTA').AsString);
+      Row.AddPair('dataHora', qConsultas.FieldByName('DATA_HORA').AsString);
+      Row.AddPair('especialidade', qConsultas.FieldByName('ESPECIALIDADE').AsString);
+      JSON.Add(Row);
+      qConsultas.Next;
+    end;
+
+    Result := JSON.ToString;
+  finally
+    qConsultas.Free;
+    JSON.Free;
+  end;
+end;
+
+procedure GerarRelatorio(Codigo: Integer; Stream: TMemoryStream; CodigoUsuario: Integer);
+begin
+  var Relatorio: TfrmRelatorioRegistroEvolucao;
+  var Filter: TRLPDFFilter;
+  begin
+    Application.CreateForm(TfrmRelatorioRegistroEvolucao, Relatorio);
+    Filter := TRLPDFFilter.Create(nil);
+    try
+      Relatorio.qRelatorio.Connection := GetConexaoUsuario(CodigoUsuario);
+      Relatorio.qRelatorio.Close;
+      Relatorio.qRelatorio.ParamByName('pCod').AsInteger := Codigo;
+      Relatorio.qRelatorio.Open;
+      Relatorio.preparePaginas;
+      Relatorio.RLReport1.ShowProgress := False;
+      Relatorio.RLReport1.Prepare;
+      if Relatorio.RLReport1.Pages.PageCount = 0 then
+  raise Exception.Create('Relatório não gerou páginas. Verifique os dados.');
+      Filter.ShowProgress := False;
+      Filter.FilterPages(Relatorio.RLReport1.Pages, Stream);
+    finally
+      Filter.Free;
+      Relatorio.Free;
+    end;
+  end;
+end;
+
+procedure TServidor.CommandGet(AContext: TIdContext;
+  ARequestInfo: TIdHTTPRequestInfo;
+  AResponseInfo: TIdHTTPResponseInfo);
+begin
+  AResponseInfo.CustomHeaders.Add('Access-Control-Allow-Origin: *');
+  AResponseInfo.CustomHeaders.Add('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+  AResponseInfo.CustomHeaders.Add('Access-Control-Allow-Headers: Content-Type');
+  AResponseInfo.ContentType := 'application/json; charset=utf-8';
+
+  if ARequestInfo.CommandType = hcOPTION then
+  begin
+    AResponseInfo.ResponseNo := 200;
+    Exit;
+  end;
+
+  if ARequestInfo.Document = '/login' then
+  begin
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentText := ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha']);
+  end
+  else if ARequestInfo.Document = '/consultas' then
+  begin
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
+    AResponseInfo.ContentText := CarregarConsultas(StrToInt(ARequestInfo.Params.Values['Usuario']));
+  end
+  else if ARequestInfo.Document = '/imprimir' then
+  begin
+    var Stream := TMemoryStream.Create;
+    try
+      GerarRelatorio(StrToIntDef(ARequestInfo.Params.Values['codigo'], 0), Stream, StrToInt(ARequestInfo.Params.Values['Usuario']));
+      Stream.Position := 0;
+
+      AResponseInfo.ResponseNo  := 200;
+      AResponseInfo.ContentType := 'application/pdf';
+      AResponseInfo.ContentStream := Stream;
+      AResponseInfo.FreeContentStream := True;
+    except
+      Stream.Free;
+      AResponseInfo.ResponseNo  := 500;
+      AResponseInfo.ContentText := '{"erro": "Erro ao gerar relatorio"}';
+    end;
+  end
+  else
+  begin
+    AResponseInfo.ResponseNo := 404;
+    AResponseInfo.ContentText := '{"erro": "rota nao encontrada"}';
+  end;
+end;
+
+procedure TServidor.Iniciar;
+begin
+  Server := TIdHTTPServer.Create(nil);
+  Server.DefaultPort := 8080;
+  Server.OnCommandGet := CommandGet;
+  Server.Active := True;
+end;
+
+procedure TServidor.Parar;
+begin
+  Server.Active := False;
+  Server.Free;
+end;
+
+var
+  Servidor: TServidor;
+  FMainForm: TForm;
+  DC: HDC;
+
+begin
+  Application.Initialize;
+  SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+  Application.CreateForm(TForm, FMainForm);
+  Application.ProcessMessages;
+  Application.ProcessMessages;
+  ConectarBancoPrincipal;
+  try
+    Servidor := TServidor.Create;
+    Servidor.Iniciar;
+
+    var Msg: TMsg;
+    while GetMessage(Msg, 0, 0, 0) do
+    begin
+      TranslateMessage(Msg);
+      DispatchMessage(Msg);
+    end;
+
+    Servidor.Parar;
+    Servidor.Free;
+
+    if Assigned(qUsuarios) then
+      qUsuarios.Free;
+
+    DesconectarBancoPrincipal;
+  except
+    on E: Exception do
+      TFile.AppendAllText('erro.log', E.Message);
+  end;
+end.
