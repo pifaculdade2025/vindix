@@ -170,7 +170,7 @@
     .conteudo {
       flex: 1;
       padding: 40px 32px;
-      max-width: 860px;
+      max-width: 1100px;
       margin: 0 auto;
       width: 100%;
     }
@@ -185,56 +185,25 @@
     .page-title { font-size: 24px; font-weight: 600; }
     .page-sub { color: var(--muted); font-size: 13px; margin-top: 4px; }
 
-    .btn-imprimir {
+    .btn-recarregar {
       display: flex;
       align-items: center;
       gap: 8px;
       padding: 11px 20px;
       background: transparent;
-      border: 1px solid var(--accent);
+      border: 1px solid var(--border);
       border-radius: 8px;
-      color: var(--accent);
+      color: var(--muted);
       font-family: 'DM Sans', sans-serif;
       font-size: 14px;
       font-weight: 500;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: border-color 0.2s, color 0.2s;
     }
 
-    .btn-imprimir:hover { background: rgba(232,255,71,0.08); }
+    .btn-recarregar:hover { border-color: var(--accent); color: var(--accent); }
 
-    .cards {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 16px;
-      margin-bottom: 32px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 20px;
-    }
-
-    .card-label {
-      font-size: 11px;
-      font-weight: 500;
-      color: var(--muted);
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      margin-bottom: 10px;
-    }
-
-    .card-value {
-      font-size: 28px;
-      font-weight: 600;
-      font-family: 'DM Mono', monospace;
-    }
-
-    .card-value.green  { color: var(--success-text); }
-    .card-value.yellow { color: var(--accent); }
-
+    /* ─── TABELA ─── */
     .tabela-wrap {
       background: var(--surface);
       border: 1px solid var(--border);
@@ -242,13 +211,25 @@
       overflow: hidden;
     }
 
-    .tabela-header {
+    .tabela-toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
       padding: 16px 20px;
       border-bottom: 1px solid var(--border);
+    }
+
+    .tabela-titulo {
       font-size: 13px;
       font-weight: 600;
       color: var(--muted);
       letter-spacing: 0.05em;
+    }
+
+    .tabela-count {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
     }
 
     table { width: 100%; border-collapse: collapse; }
@@ -271,19 +252,55 @@
     }
 
     tr:last-child td { border-bottom: none; }
-    tr:hover td { background: rgba(255,255,255,0.02); }
+    tr:hover td { background: rgba(255,255,255,0.02); cursor: pointer; }
 
-    .badge {
+    .td-id {
+      font-family: 'DM Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .td-data {
+      font-family: 'DM Mono', monospace;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .badge-especialidade {
       display: inline-block;
       padding: 3px 10px;
       border-radius: 20px;
       font-size: 11px;
       font-weight: 500;
+      background: #1a1f2e;
+      color: #7eb8f7;
+      border: 1px solid #2a3a5e;
     }
 
-    .badge.pago     { background: var(--success-bg); color: var(--success-text); }
-    .badge.pendente { background: #2a2000; color: #facc15; }
-    .badge.cancelado{ background: var(--error-bg); color: var(--error-text); }
+    /* ─── LOADING / EMPTY ─── */
+    .estado {
+      padding: 60px 20px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .estado-icon {
+      font-size: 32px;
+      margin-bottom: 12px;
+    }
+
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      margin: 0 auto 12px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
@@ -305,7 +322,6 @@
     </div>
 
     <button class="btn-login" id="btnLogin" onclick="fazerLogin()">Entrar</button>
-
     <div class="mensagem" id="mensagem"></div>
   </div>
 
@@ -322,70 +338,34 @@
     <div class="conteudo">
       <div class="page-header">
         <div>
-          <div class="page-title">Relatório de Vendas</div>
-          <div class="page-sub">Março 2026</div>
+          <div class="page-title">Consultas</div>
+          <div class="page-sub">Listagem de atendimentos</div>
         </div>
-        <button class="btn-imprimir" onclick="abrirRelatorio()">
-          🖨️ Imprimir Relatório
+        <button class="btn-recarregar" onclick="carregarConsultas()">
+          🔄 Recarregar
         </button>
       </div>
 
-      <div class="cards">
-        <div class="card">
-          <div class="card-label">Total de Vendas</div>
-          <div class="card-value yellow">R$ 8.450</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Pedidos</div>
-          <div class="card-value">24</div>
-        </div>
-        <div class="card">
-          <div class="card-label">Recebido</div>
-          <div class="card-value green">R$ 6.200</div>
-        </div>
-      </div>
-
       <div class="tabela-wrap">
-        <div class="tabela-header">Últimos pedidos</div>
-        <table>
-          <thead>
-            <tr>
-              <th>#</th>
-              <th>Cliente</th>
-              <th>Produto</th>
-              <th>Valor</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td>001</td><td>João Silva</td><td>Produto A</td>
-              <td>R$ 450,00</td><td><span class="badge pago">Pago</span></td>
-            </tr>
-            <tr>
-              <td>002</td><td>Maria Santos</td><td>Produto B</td>
-              <td>R$ 320,00</td><td><span class="badge pendente">Pendente</span></td>
-            </tr>
-            <tr>
-              <td>003</td><td>Pedro Costa</td><td>Produto C</td>
-              <td>R$ 780,00</td><td><span class="badge pago">Pago</span></td>
-            </tr>
-            <tr>
-              <td>004</td><td>Ana Oliveira</td><td>Produto A</td>
-              <td>R$ 450,00</td><td><span class="badge cancelado">Cancelado</span></td>
-            </tr>
-            <tr>
-              <td>005</td><td>Carlos Lima</td><td>Produto D</td>
-              <td>R$ 1.200,00</td><td><span class="badge pago">Pago</span></td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="tabela-toolbar">
+          <div class="tabela-titulo">CONSULTAS</div>
+          <div class="tabela-count" id="totalRegistros">—</div>
+        </div>
+        <div id="tabela-conteudo">
+          <div class="estado">
+            <div class="estado-icon">📋</div>
+            Faça login para carregar as consultas.
+          </div>
+        </div>
       </div>
 
     </div>
   </div>
 
   <script>
+    let codigoUsuario     = 0;
+    let nomeUsuarioLogado = '';
+
     async function fazerLogin() {
       const usuario = document.getElementById('usuario').value.trim();
       const senha   = document.getElementById('senha').value.trim();
@@ -406,9 +386,14 @@
         const data = await response.json();
 
         if (data.sucesso) {
-          document.getElementById('tela-login').style.display = 'none';
+          codigoUsuario     = data.codigo;
+          nomeUsuarioLogado = data.nome;
+
+          document.getElementById('tela-login').style.display   = 'none';
           document.getElementById('tela-sistema').style.display = 'flex';
-          document.getElementById('nomeUsuario').textContent = data.nome;
+          document.getElementById('nomeUsuario').textContent     = data.nome;
+
+          carregarConsultas();
         } else {
           mostrarMensagem(`❌ ${data.mensagem}`, 'erro');
         }
@@ -420,23 +405,94 @@
       }
     }
 
-    function abrirRelatorio() {
-      const codigo = 56; // ← código do registro
-      window.open(`http://localhost:8080/imprimir?codigo=${codigo}`, '_blank');
+    async function carregarConsultas() {
+      const conteudo = document.getElementById('tabela-conteudo');
+      const total    = document.getElementById('totalRegistros');
+
+      conteudo.innerHTML = `
+        <div class="estado">
+          <div class="spinner"></div>
+          Carregando consultas...
+        </div>`;
+      total.textContent = '—';
+
+      try {
+        const response = await fetch(`http://localhost:8080/consultas?usuario=${codigoUsuario}`);
+        if (!response.ok) throw new Error('Erro no servidor');
+        const consultas = await response.json();
+
+        if (consultas.length === 0) {
+          conteudo.innerHTML = `
+            <div class="estado">
+              <div class="estado-icon">📭</div>
+              Nenhuma consulta encontrada.
+            </div>`;
+          total.textContent = '0 registros';
+          return;
+        }
+
+        let rows = '';
+        consultas.forEach(c => {
+          rows += `
+            <tr onclick="abrirRelatorio(${c.id})">
+              <td class="td-id">#${c.id}</td>
+              <td>${c.paciente}</td>
+              <td>${c.terapeuta}</td>
+              <td class="td-data">${c.dataHora}</td>
+              <td><span class="badge-especialidade">${c.especialidade}</span></td>
+            </tr>`;
+        });
+
+        conteudo.innerHTML = `
+          <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Paciente</th>
+                <th>Terapeuta</th>
+                <th>Data / Hora</th>
+                <th>Especialidade</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>`;
+
+        total.textContent = `${consultas.length} registro${consultas.length !== 1 ? 's' : ''}`;
+
+      } catch (err) {
+        conteudo.innerHTML = `
+          <div class="estado">
+            <div class="estado-icon">⚠️</div>
+            Erro ao carregar consultas. Verifique a conexão.
+          </div>`;
+        total.textContent = '—';
+      }
+    }
+
+    function abrirRelatorio(id) {
+      window.open(`http://localhost:8080/imprimir?codigo=${id}&usuario=${codigoUsuario}`, '_blank');
     }
 
     function sair() {
+      codigoUsuario     = 0;
+      nomeUsuarioLogado = '';
       document.getElementById('tela-sistema').style.display = 'none';
-      document.getElementById('tela-login').style.display = 'block';
+      document.getElementById('tela-login').style.display   = 'block';
       document.getElementById('usuario').value = '';
-      document.getElementById('senha').value = '';
+      document.getElementById('senha').value   = '';
       document.getElementById('mensagem').style.display = 'none';
+      document.getElementById('tabela-conteudo').innerHTML = `
+        <div class="estado">
+          <div class="estado-icon">📋</div>
+          Faça login para carregar as consultas.
+        </div>`;
+      document.getElementById('totalRegistros').textContent = '—';
     }
 
     function mostrarMensagem(texto, tipo) {
       const msg = document.getElementById('mensagem');
       msg.textContent = texto;
-      msg.className = `mensagem ${tipo}`;
+      msg.className   = `mensagem ${tipo}`;
       msg.style.display = 'block';
     }
 

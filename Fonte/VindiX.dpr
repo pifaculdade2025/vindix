@@ -18,8 +18,10 @@ uses
   RLPDFFilter,
   Winapi.ActiveX,
   RLUtils,
+  System.Variants,
   UnConexao in 'UnConexao.pas',
-  UnRelatorioRegistroEvolucao in 'UnRelatorioRegistroEvolucao.pas' {frmRelatorioRegistroEvolucao};
+  UnRelatorioRegistroEvolucao in 'UnRelatorioRegistroEvolucao.pas',
+  FireDAC.Comp.Client {frmRelatorioRegistroEvolucao};
 
 type
   TServidor = class
@@ -31,43 +33,24 @@ type
     procedure Parar;
   end;
 
-procedure GerarRelatorio(Codigo: Integer; Stream: TMemoryStream);
-begin
-  var Relatorio: TfrmRelatorioRegistroEvolucao;
-  var Filter: TRLPDFFilter;
-  begin
-    Application.CreateForm(TfrmRelatorioRegistroEvolucao, Relatorio);
-    Filter := TRLPDFFilter.Create(nil);
-    try
-      Relatorio.qRelatorio.Connection := Conexao;
-      Relatorio.qRelatorio.Close;
-      Relatorio.qRelatorio.ParamByName('pCod').AsInteger := Codigo;
-      Relatorio.qRelatorio.Open;
-      Relatorio.preparePaginas;
-      Relatorio.RLReport1.ShowProgress := False;
-      Relatorio.RLReport1.Prepare;
-      Filter.ShowProgress := False;
-      Filter.FilterPages(Relatorio.RLReport1.Pages, Stream);
-    finally
-      Filter.Free;
-      Relatorio.Free;
-    end;
-  end;
-end;
-
 function ValidarLogin(Usuario, Senha: string): string;
 var
   JSON: TJSONObject;
 begin
   JSON := TJSONObject.Create;
   try
-    // Aqui você conectaria ao banco depois
-    // Query.SQL.Text := 'SELECT nome FROM usuarios WHERE login=:u AND senha=:s'
-    if (Usuario = 'admin') and (Senha = '1234') then
+    qDataBDPrincipal.Close;
+    qDataBDPrincipal.SQL.Text := 'SELECT ID, NOME FROM USUARIOS WHERE LOGIN = :psLogin AND SENHA = :piSenha';
+    qDataBDPrincipal.ParamByName('psLogin').AsString := Usuario;
+    qDataBDPrincipal.ParamByName('piSenha').AsString := Senha;
+    qDataBDPrincipal.Open;
+
+    if qDataBDPrincipal.RecordCount > 0 then
     begin
       JSON.AddPair('sucesso', TJSONBool.Create(True));
       JSON.AddPair('mensagem', 'Login realizado com sucesso!');
-      JSON.AddPair('nome', 'Administrador');
+      JSON.AddPair('nome', qDataBDPrincipal.FieldByName('NOME').AsString);
+      JSON.AddPair('codigo', TJSONNumber.Create(qDataBDPrincipal.FieldByName('ID').AsInteger));
     end
     else
     begin
@@ -78,6 +61,78 @@ begin
     Result := JSON.ToString;
   finally
     JSON.Free;
+  end;
+end;
+
+function CarregarConsultas(CodigoUsuario: Integer): String;
+begin
+  if GetConexaoUsuario(CodigoUsuario) = nil then
+  begin
+    Result := '{"erro": "Usuario nao encontrado"}';
+    Exit;
+  end;
+
+  var qConsultas := TFDQuery.Create(nil);
+  var JSON := TJSONArray.Create;
+  try
+    qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
+    qConsultas.SQL.Text :=
+      ' SELECT '+
+      '    CONSULTAS.ID, '+
+      '    PACIENTES.NOME AS PACIENTE, '+
+      '    TERAPEUTAS.NOME AS TERAPEUTA, '+
+      '    CONSULTAS.DT_HR_SESSAO DATA_HORA, '+
+      '    ESPECIALIDADES.DESCRICAO AS ESPECIALIDADE ' +
+      ' FROM CONSULTAS  ' +
+      '    JOIN CADASTROS PACIENTES ON PACIENTES.ID = CONSULTAS.ID_PACIENTE ' +
+      '    JOIN CADASTROS TERAPEUTAS ON TERAPEUTAS.ID = CONSULTAS.ID_TERAPEUTA ' +
+      '    JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE ' +
+      'ORDER BY CONSULTAS.DT_HR_SESSAO DESC';
+    qConsultas.Open;
+
+    while not qConsultas.Eof do
+    begin
+      var Row := TJSONObject.Create;
+      Row.AddPair('id', TJSONNumber.Create(qConsultas.FieldByName('ID').AsInteger));
+      Row.AddPair('paciente', qConsultas.FieldByName('PACIENTE').AsString);
+      Row.AddPair('terapeuta', qConsultas.FieldByName('TERAPEUTA').AsString);
+      Row.AddPair('dataHora', qConsultas.FieldByName('DATA_HORA').AsString);
+      Row.AddPair('especialidade', qConsultas.FieldByName('ESPECIALIDADE').AsString);
+      JSON.Add(Row);
+      qConsultas.Next;
+    end;
+
+    Result := JSON.ToString;
+  finally
+    qConsultas.Free;
+    JSON.Free;
+  end;
+end;
+
+procedure GerarRelatorio(Codigo: Integer; Stream: TMemoryStream; CodigoUsuario: Integer);
+var
+  Relatorio: TfrmRelatorioRegistroEvolucao;
+  Filter: TRLPDFFilter;
+begin
+  Application.CreateForm(TfrmRelatorioRegistroEvolucao, Relatorio);
+  Filter := TRLPDFFilter.Create(nil);
+  try
+    Relatorio.qRelatorio.Connection := GetConexaoUsuario(CodigoUsuario);
+    Relatorio.qRelatorio.Close;
+    Relatorio.qRelatorio.ParamByName('pCod').AsInteger := Codigo;
+    Relatorio.qRelatorio.Open;
+    Relatorio.preparePaginas;
+    Relatorio.RLReport1.ShowProgress := False;
+    Relatorio.RLReport1.Prepare;
+
+    if Relatorio.RLReport1.Pages.PageCount = 0 then
+      raise Exception.Create('Relatório não gerou páginas.');
+
+    Filter.ShowProgress := False;
+    Filter.FilterPages(Relatorio.RLReport1.Pages, Stream);
+  finally
+    Filter.Free;
+    Relatorio.Free;
   end;
 end;
 
@@ -95,33 +150,47 @@ begin
     AResponseInfo.ResponseNo := 200;
     Exit;
   end;
+  try
+    if ARequestInfo.Document = '/login' then
+    begin
+      AResponseInfo.ResponseNo := 200;
+      AResponseInfo.ContentText := ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha']);
+    end
+    else if ARequestInfo.Document = '/consultas' then
+    begin
+      AResponseInfo.ResponseNo := 200;
+      AResponseInfo.ContentType := 'application/json; charset=utf-8';
+      AResponseInfo.ContentText := CarregarConsultas(StrToInt(ARequestInfo.Params.Values['Usuario']));
+    end
+    else if ARequestInfo.Document = '/imprimir' then
+    begin
+      var Stream := TMemoryStream.Create;
+      try
+        GerarRelatorio(StrToIntDef(ARequestInfo.Params.Values['codigo'], 0), Stream, StrToInt(ARequestInfo.Params.Values['Usuario']));
+        Stream.Position := 0;
 
-  if ARequestInfo.Document = '/login' then
-  begin
-    AResponseInfo.ResponseNo := 200;
-    AResponseInfo.ContentText := ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha']);
-  end
-  else if ARequestInfo.Document = '/imprimir' then
-  begin
-    var Stream := TMemoryStream.Create;
-    try
-      GerarRelatorio(StrToIntDef(ARequestInfo.Params.Values['codigo'], 0), Stream);
-      Stream.Position := 0;
-
-      AResponseInfo.ResponseNo  := 200;
-      AResponseInfo.ContentType := 'application/pdf';
-      AResponseInfo.ContentStream := Stream;
-      AResponseInfo.FreeContentStream := True;
-    except
-      Stream.Free;
-      AResponseInfo.ResponseNo  := 500;
-      AResponseInfo.ContentText := '{"erro": "Erro ao gerar relatorio"}';
+        AResponseInfo.ResponseNo  := 200;
+        AResponseInfo.ContentType := 'application/pdf';
+        AResponseInfo.ContentStream := Stream;
+        AResponseInfo.FreeContentStream := True;
+      except
+        Stream.Free;
+        AResponseInfo.ResponseNo  := 500;
+        AResponseInfo.ContentText := '{"erro": "Erro ao gerar relatorio"}';
+      end;
+    end
+    else
+    begin
+      AResponseInfo.ResponseNo := 404;
+      AResponseInfo.ContentText := '{"erro": "rota nao encontrada"}';
     end;
-  end
-  else
-  begin
-    AResponseInfo.ResponseNo := 404;
-    AResponseInfo.ContentText := '{"erro": "rota nao encontrada"}';
+  except
+    on E: Exception do
+    begin
+      AResponseInfo.ResponseNo := 500;
+      AResponseInfo.ContentType := 'application/json; charset=utf-8';
+      AResponseInfo.ContentText := '{"erro": "' + E.ClassName + ': ' + E.Message + '"}';
+    end;
   end;
 end;
 
@@ -150,7 +219,7 @@ begin
   Application.CreateForm(TForm, FMainForm);
   Application.ProcessMessages;
   Application.ProcessMessages;
-  ConectarBanco;
+  ConectarBancoPrincipal;
   try
     Servidor := TServidor.Create;
     Servidor.Iniciar;
@@ -165,7 +234,10 @@ begin
     Servidor.Parar;
     Servidor.Free;
 
-    DesconectarBanco;
+    if Assigned(qUsuarios) then
+      qUsuarios.Free;
+
+    DesconectarBancoPrincipal;
   except
     on E: Exception do
       TFile.AppendAllText('erro.log', E.Message);
