@@ -22,7 +22,8 @@ uses
 var
   ConexaoPrincipal: TFDConnection;
   Conexoes: TDictionary<Integer, TFDConnection>;
-  qUsuarios: TFDQuery;
+  qUsuarios: TFDQuery;  
+  qDataBDPrincipal: TFDQuery;
 
 procedure ConectarBancoPrincipal;
 procedure DesconectarBancoPrincipal;
@@ -45,6 +46,10 @@ begin
 
   ConexaoPrincipal.LoginPrompt := False;
   ConexaoPrincipal.Connected   := True;
+  CriarDataSetUsuarios;
+
+  qDataBDPrincipal := TFDQuery.Create(nil);  
+  qDataBDPrincipal.Connection := ConexaoPrincipal;   
 end;
 
 procedure DesconectarBancoPrincipal;
@@ -109,11 +114,14 @@ begin
       Conn.Params.DriverID := 'FB';
       Conn.Params.Database := qCaminhoBD.FieldByName('CAMINHO_BD').AsString;
       Conn.Params.UserName := 'SYSDBA';
-      Conn.Params.Password := 'masterkey';
+      Conn.Params.Password := 'masterkey';       
+      Conn.Params.Add('CharacterSet=UTF8');
       Conn.Connected := True;
       Conexoes.Add(qCaminhoBD.FieldByName('ID').AsInteger, Conn);
     except
       Conn.Free;
+      Conn := nil;
+      raise;
     end;
   finally
     qCaminhoBD.Free;
@@ -125,6 +133,8 @@ initialization
   Conexoes := TDictionary<Integer, TFDConnection>.Create;
 
 finalization
+  for var Conn in Conexoes.Values do
+    Conn.Free;
   Conexoes.Free;
 
 end.

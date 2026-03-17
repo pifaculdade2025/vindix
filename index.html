@@ -469,9 +469,24 @@
       }
     }
 
-    function abrirRelatorio(id) {
-      window.open(`http://localhost:8080/imprimir?codigo=${id}&usuario=${codigoUsuario}`, '_blank');
+  async function abrirRelatorio(id) {
+    try {
+      const response = await fetch('http://localhost:8080/imprimir', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ codigo: id, usuario: codigoUsuario })
+      });
+
+      if (!response.ok) throw new Error('Erro ao gerar PDF');
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      window.open(url, '_blank');
+      setTimeout(() => URL.revokeObjectURL(url), 10000);
+    } catch (err) {
+      alert('Erro ao gerar relatório: ' + err.message);
     }
+  }
 
     function sair() {
       codigoUsuario     = 0;

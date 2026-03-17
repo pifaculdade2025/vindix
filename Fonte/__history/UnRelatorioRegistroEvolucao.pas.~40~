@@ -240,7 +240,7 @@ begin
   for i := 0 to stlTextos.Count - 1 do
   begin
     if (stlTextos[i] <> '---QUEBRA_PAGINA---') then
-      RLMemo1.Lines.Add(stlTextos[i])
+      RLMemo1.Lines.Add(' '+stlTextos[i])
     else
        break;
   end;
@@ -257,7 +257,7 @@ begin
     linha.Parent := RLBand1;
     linha.Height := 1;
     linha.DrawKind := dkLine;
-    linha.top := RLMemo2.Top;
+    linha.top := RLMemo2.Top-3;
     linha.Width := RLMemo1.Width;
     linha.Left := RLMemo1.Left;
 
@@ -265,7 +265,7 @@ begin
     linha.Parent := RLBand1;
     linha.Height := 1;
     linha.DrawKind := dkLine;
-    linha.top := RLMemo2.Top;
+    linha.top := RLMemo2.Top-3;
     linha.Width := RLMemo2.Width;
     linha.Left := RLMemo2.Left;
   end;
@@ -344,7 +344,7 @@ begin
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
   linha.top := RLMemo1.Top - 3;
-  linha.Height := RLMemo1.Height + 3;
+  linha.Height := RLMemo1.Height;
   linha.Left := RLMemo1.Left;
 
   linha := TRLDraw.Create(RLBand1);
@@ -354,14 +354,14 @@ begin
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
   linha.top := RLMemo1.Top-3;
-  linha.Height := RLMemo1.Height+3;
+  linha.Height := RLMemo1.Height;
   linha.Left := RLMemo1.Left + RLMemo1.Width;
 
   linha := TRLDraw.Create(RLBand1);
   linha.Parent := RLBand1;
   linha.Height := 1;
   linha.DrawKind := dkLine;
-  linha.top := RLMemo2.Top;
+  linha.top := RLMemo2.Top-3;
   linha.Width := RLMemo2.Width;
   linha.Left := RLMemo2.Left;
 
@@ -369,7 +369,7 @@ begin
   linha.Parent := RLBand1;
   linha.Height := 1;
   linha.DrawKind := dkLine;
-  linha.top := RLMemo2.Top + RLMemo2.Height - 1;
+  linha.top := RLMemo2.Top + RLMemo2.Height - 1 -3;
   linha.Width := RLMemo2.Width;
   linha.Left := RLMemo2.Left;
 
@@ -379,7 +379,7 @@ begin
   linha.DrawKind := dkCustom;
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
-  linha.top := RLMemo2.Top;
+  linha.top := RLMemo2.Top-3;
   linha.Height := RLMemo2.Height;
   linha.Left := RLMemo2.Left;
 
@@ -389,7 +389,7 @@ begin
   linha.DrawKind := dkCustom;
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
-  linha.top := RLMemo2.Top;
+  linha.top := RLMemo2.Top-3;
   linha.Height := RLMemo2.Height;
   linha.Left := RLMemo2.Left + RLMemo2.Width - 1;
 end;
@@ -417,7 +417,7 @@ begin
     if stlTextos[i] = '---QUEBRA_PAGINA---' then
       Break;
 
-    RLMemo3.Lines.Add(stlTextos[i]);
+    RLMemo3.Lines.Add(' '+stlTextos[i]);
   end;
 
   RLBand2.AutoExpand := false;
@@ -432,7 +432,7 @@ begin
     linha.Parent := RLBand2;
     linha.Height := 1;
     linha.DrawKind := dkLine;
-    linha.top := RLMemo4.Top;
+    linha.top := RLMemo4.Top-3;
     linha.Width := RLMemo3.Width;
     linha.Left := RLMemo3.Left;
 
@@ -440,7 +440,7 @@ begin
     linha.Parent := RLBand2;
     linha.Height := 1;
     linha.DrawKind := dkLine;
-    linha.top := RLMemo4.Top;
+    linha.top := RLMemo4.Top-3;
     linha.Width := RLMemo4.Width;
     linha.Left := RLMemo4.Left;
   end;
@@ -452,7 +452,7 @@ begin
   linha.Parent := RLBand2;
   linha.Height := 1;
   linha.DrawKind := dkLine;
-  linha.top := RLMemo3.Top;
+  linha.top := RLMemo3.Top-3;
   linha.Width := RLMemo3.Width;
   linha.Left := RLMemo3.Left;
 
@@ -460,7 +460,7 @@ begin
   linha.Parent := RLBand2;
   linha.Height := 1;
   linha.DrawKind := dkLine;
-  linha.top := RLMemo3.Top + RLMemo3.Height - 1;
+  linha.top := RLMemo3.Top + RLMemo3.Height - 1 -3;
   linha.Width := RLMemo3.Width;
   linha.Left := RLMemo3.Left;
 
@@ -470,7 +470,7 @@ begin
   linha.DrawKind := dkCustom;
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
-  linha.top := RLMemo3.Top;
+  linha.top := RLMemo3.Top-3;
   linha.Height := RLMemo3.Height;
   linha.Left := RLMemo3.Left;
 
@@ -480,7 +480,7 @@ begin
   linha.DrawKind := dkCustom;
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
-  linha.top := RLMemo3.Top;
+  linha.top := RLMemo3.Top-3;
   linha.Height := RLMemo3.Height;
   linha.Left := RLMemo3.Left + RLMemo3.Width;
 
@@ -488,7 +488,7 @@ begin
   linha.Parent := RLBand2;
   linha.Height := 1;
   linha.DrawKind := dkLine;
-  linha.top := RLMemo4.Top;
+  linha.top := RLMemo4.Top-3;
   linha.Width := RLMemo4.Width;
   linha.Left := RLMemo4.Left;
 
@@ -496,7 +496,7 @@ begin
   linha.Parent := RLBand2;
   linha.Height := 1;
   linha.DrawKind := dkLine;
-  linha.top := RLMemo4.Top + RLMemo4.Height - 1;
+  linha.top := RLMemo4.Top + RLMemo4.Height - 1-3;
   linha.Width := RLMemo4.Width;
   linha.Left := RLMemo4.Left;
 
@@ -506,7 +506,7 @@ begin
   linha.DrawKind := dkCustom;
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
-  linha.top := RLMemo4.Top;
+  linha.top := RLMemo4.Top-3;
   linha.Height := RLMemo4.Height;
   linha.Left := RLMemo4.Left;
 
@@ -516,7 +516,7 @@ begin
   linha.DrawKind := dkCustom;
   linha.DrawData.Add('0 1');
   linha.DrawData.Add('0 0');
-  linha.top := RLMemo4.Top;
+  linha.top := RLMemo4.Top-3;
   linha.Height := RLMemo4.Height;
   linha.Left := RLMemo4.Left + RLMemo4.Width - 1;
 end;
