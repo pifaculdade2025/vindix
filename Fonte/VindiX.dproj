@@ -110,9 +110,7 @@
             <MainSource>MainSource</MainSource>
         </DelphiCompile>
         <DCCReference Include="UnConexao.pas"/>
-        <DCCReference Include="UnRelatorioRegistroEvolucao.pas">
-            <Form>frmRelatorioRegistroEvolucao</Form>
-        </DCCReference>
+        <DCCReference Include="UnRelatorioRegistroEvolucaoPDF.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

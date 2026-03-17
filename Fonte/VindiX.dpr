@@ -7,26 +7,25 @@ uses
   System.SysUtils,
   System.IOUtils,
   Winapi.Windows,
-  Vcl.Forms,
   IdHTTPServer,
   IdCustomHTTPServer,
   IdContext,
   System.JSON,
   System.Classes,
-  RLReport,
-  RLFilters,
-  RLPDFFilter,
-  Winapi.ActiveX,
-  RLUtils,
-  System.Variants,
+  FireDAC.Stan.Param,
+  IdGlobal,
+  FireDAC.DApt,
   UnConexao in 'UnConexao.pas',
-  UnRelatorioRegistroEvolucao in 'UnRelatorioRegistroEvolucao.pas',
-  FireDAC.Comp.Client {frmRelatorioRegistroEvolucao};
+  FireDAC.Comp.Client,
+  UnRelatorioRegistroEvolucaoPDF in 'UnRelatorioRegistroEvolucaoPDF.pas';
 
 type
   TServidor = class
     Server: TIdHTTPServer;
     procedure CommandGet(AContext: TIdContext;
+      ARequestInfo: TIdHTTPRequestInfo;
+      AResponseInfo: TIdHTTPResponseInfo);
+    procedure CommandOther(AContext: TIdContext;
       ARequestInfo: TIdHTTPRequestInfo;
       AResponseInfo: TIdHTTPResponseInfo);
     procedure Iniciar;
@@ -111,29 +110,61 @@ end;
 
 procedure GerarRelatorio(Codigo: Integer; Stream: TMemoryStream; CodigoUsuario: Integer);
 var
-  Relatorio: TfrmRelatorioRegistroEvolucao;
-  Filter: TRLPDFFilter;
+  qConsultas: TFDQuery;
 begin
-  Application.CreateForm(TfrmRelatorioRegistroEvolucao, Relatorio);
-  Filter := TRLPDFFilter.Create(nil);
+  qDataBDPrincipal.Close;
+  qDataBDPrincipal.SQL.Text := ' SELECT '+
+                               '   EMPRESAS.CAMINHO_LOGOS '+
+                               ' FROM EMPRESAS '+
+                               '   JOIN USUARIOS ON '+
+                               '        (USUARIOS.EMPRESA = EMPRESAS.ID) '+
+                               ' WHERE USUARIOS.ID = :piCodUser';
+  qDataBDPrincipal.ParamByName('piCodUser').AsInteger := CodigoUsuario;
+  qDataBDPrincipal.Open;
+  qConsultas := TFDQuery.Create(nil);
   try
-    Relatorio.qRelatorio.Connection := GetConexaoUsuario(CodigoUsuario);
-    Relatorio.qRelatorio.Close;
-    Relatorio.qRelatorio.ParamByName('pCod').AsInteger := Codigo;
-    Relatorio.qRelatorio.Open;
-    Relatorio.preparePaginas;
-    Relatorio.RLReport1.ShowProgress := False;
-    Relatorio.RLReport1.Prepare;
+    qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
+    qConsultas.SQL.Text :=
+      ' SELECT '+
+      '    CONSULTAS.ID, '+
+      '    PACIENTE.NOME NOME_PACIENTE, ' +
+      '    DATEDIFF(YEAR FROM PACIENTE.DT_NASC TO CONSULTAS.DT_HR_SESSAO) - '+
+      '    CASE'+
+      '       WHEN EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
+      '         OR ('+
+      '              EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) = EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
+      '              AND EXTRACT(DAY FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(DAY FROM PACIENTE.DT_NASC)'+
+      '            )'+
+      '       THEN 1'+
+      '       ELSE 0'+
+      '    END as IDADE,'+
+      '    TERAPEUTA.NOME AS NOME_PROF, '+
+      '    ESPECIALIDADES.DESCRICAO ESPECIALIDADE, ' +
+      '    PACIENTE.DIAGNOSTICO, ' +
+      '    EXTRACT(YEAR FROM CONSULTAS.DT_HR_SESSAO) ANO, ' +
+      '    CONSULTAS.RESUMO_SESSAO ' +
+      ' FROM CONSULTAS ' +
+      '    JOIN CADASTROS PACIENTE ON PACIENTE.ID = CONSULTAS.ID_PACIENTE ' +
+      '    JOIN CADASTROS TERAPEUTA  ON TERAPEUTA.ID  = CONSULTAS.ID_TERAPEUTA ' +
+      '    JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE ' +
+      'WHERE CONSULTAS.ID = :pCod';
+    qConsultas.ParamByName('pCod').AsInteger := Codigo;
+    qConsultas.Open;
 
-    if Relatorio.RLReport1.Pages.PageCount = 0 then
-      raise Exception.Create('Relatório não gerou páginas.');
+    if qConsultas.IsEmpty then
+      raise Exception.Create('Registro nao encontrado');
 
-    Filter.ShowProgress := False;
-    Filter.FilterPages(Relatorio.RLReport1.Pages, Stream);
+    GerarRelatorioEvolucaoPDF(qConsultas, Stream, qDataBDPrincipal.FieldByName('CAMINHO_LOGOS').AsString);
   finally
-    Filter.Free;
-    Relatorio.Free;
+    qConsultas.Free;
   end;
+end;
+
+procedure TServidor.CommandOther(AContext: TIdContext;
+  ARequestInfo: TIdHTTPRequestInfo;
+  AResponseInfo: TIdHTTPResponseInfo);
+begin
+  CommandGet(AContext, ARequestInfo, AResponseInfo);
 end;
 
 procedure TServidor.CommandGet(AContext: TIdContext;
@@ -164,13 +195,17 @@ begin
     end
     else if ARequestInfo.Document = '/imprimir' then
     begin
+      var Body: TJSONObject;
+      ARequestInfo.PostStream.Position := 0;
+      Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
       var Stream := TMemoryStream.Create;
       try
-        GerarRelatorio(StrToIntDef(ARequestInfo.Params.Values['codigo'], 0), Stream, StrToInt(ARequestInfo.Params.Values['Usuario']));
+        GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
         Stream.Position := 0;
 
         AResponseInfo.ResponseNo  := 200;
         AResponseInfo.ContentType := 'application/pdf';
+        AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
         AResponseInfo.ContentStream := Stream;
         AResponseInfo.FreeContentStream := True;
       except
@@ -178,6 +213,7 @@ begin
         AResponseInfo.ResponseNo  := 500;
         AResponseInfo.ContentText := '{"erro": "Erro ao gerar relatorio"}';
       end;
+      Body.Free;
     end
     else
     begin
@@ -199,6 +235,7 @@ begin
   Server := TIdHTTPServer.Create(nil);
   Server.DefaultPort := 8080;
   Server.OnCommandGet := CommandGet;
+  Server.OnCommandOther := CommandOther;
   Server.Active := True;
 end;
 
@@ -210,20 +247,12 @@ end;
 
 var
   Servidor: TServidor;
-  FMainForm: TForm;
-  DC: HDC;
 
 begin
-  Application.Initialize;
-  SetProcessDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
-  Application.CreateForm(TForm, FMainForm);
-  Application.ProcessMessages;
-  Application.ProcessMessages;
   ConectarBancoPrincipal;
   try
     Servidor := TServidor.Create;
     Servidor.Iniciar;
-
     var Msg: TMsg;
     while GetMessage(Msg, 0, 0, 0) do
     begin
