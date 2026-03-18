@@ -207,24 +207,18 @@ begin
     end;
   end;
 
-  if MaxLinhas > CountLinhas then
+  if 37 > Result.Count then
   begin
-    while CountLinhas < MaxLinhas do
+    while Result.Count < 37 do
     begin
-      Inc(CountLinhas);
-      if Result.Count = MaxLinhas then
-        Result.Add('---QUEBRA_PAGINA---');
       Result.Add('');
     end;
-  end;
-
-  if MAX_LINHAS_PAG > CountLinhas then
+  end
+  else if MAX_LINHAS_PAG > CountLinhas then
   begin
     while CountLinhas < MAX_LINHAS_PAG do
     begin
-      Inc(CountLinhas);
-      if Result.Count = MAX_LINHAS_PAG then
-        Result.Add('---QUEBRA_PAGINA---');
+      inc(CountLinhas);
       Result.Add('');
     end;
   end;

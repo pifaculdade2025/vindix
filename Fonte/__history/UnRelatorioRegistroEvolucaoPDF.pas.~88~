@@ -207,12 +207,20 @@ begin
     end;
   end;
 
-  while i < 80 do
+  if 37 > Result.Count then
   begin
-    Inc(i);
-    if Result.Count = MAX_LINHAS_PAG then
-      Result.Add('---QUEBRA_PAGINA---');
-    Result.Add('');
+    while Result.Count < 37 do
+    begin
+      Result.Add('');
+    end;
+  end
+  else if MAX_LINHAS_PAG > CountLinhas then
+  begin
+    while CountLinhas < MAX_LINHAS_PAG do
+    begin
+      inc(CountLinhas);
+      Result.Add('');
+    end;
   end;
 
   LinhasEntrada.Free;

@@ -59,8 +59,8 @@ const
 
   // Courier 8pt: ~5.5pt por char. Col texto ~400pt → ~72 chars
   // mantemos 69 para dar margem de seguranca
-  MAX_COLS       = 57;
-  MAX_LINHAS_PAG = 42;
+  MAX_COLS       = 58;
+  MAX_LINHAS_PAG = 45;
 
 // --------------------------------------------------------------------------
 // Escape de string para PDF (latin-1 / WinAnsi)
@@ -130,18 +130,6 @@ begin
   Linha       := '';
   I           := 0;
   CountLinhas := 0;
-
-  if Texto = '' then
-  begin
-    for I := 1 to 103 do
-    begin
-      if Result.Count = MAX_LINHAS_PAG then
-        Result.Add('---QUEBRA_PAGINA---');
-      Result.Add('');
-    end;
-    LinhasEntrada.Free;
-    Exit;
-  end;
 
   while I < LinhasEntrada.Count do
   begin
@@ -216,6 +204,22 @@ begin
       Result.Add(Linha);
       Inc(CountLinhas);
       Linha := '';
+    end;
+  end;
+
+  if 37 > Result.Count then
+  begin
+    while Result.Count < 37 do
+    begin
+      Result.Add('');
+    end;
+  end
+  else if MAX_LINHAS_PAG > CountLinhas then
+  begin
+    while CountLinhas < MAX_LINHAS_PAG do
+    begin
+      inc(CountLinhas);
+      Result.Add('');
     end;
   end;
 
@@ -440,8 +444,8 @@ var
     SetFH(FS_BOLD, True);
     PT('Especialidade:', MeioX, Y);
     SetFH(FS_NORMAL, False);
-    PT(Esp, MeioX + 78 + L, Y);
-    HL(MeioX + 76, Y + 2, RDir);        // linha colada ao label
+    PT(Esp, MeioX + 80 + L, Y);
+    HL(MeioX + 78, Y + 2, RDir);        // linha colada ao label
 
     Y := Y + G;
 
