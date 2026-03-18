@@ -1,0 +1,1810 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VINDIX - Sistema de Gestão Clínica</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-green: #10B981;
+            --primary-green-dark: #059669;
+            --primary-green-light: #D1FAE5;
+            --accent-x: #FF6B35;
+            --accent-x-dark: #E55A2B;
+            --bg-dark: #0F172A;
+            --bg-light: #F8FAFC;
+            --text-dark: #1E293B;
+            --text-light: #64748B;
+            --border-color: #E2E8F0;
+            --card-bg: #FFFFFF;
+            --sidebar-bg: #F0F9F7;
+            --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 25px rgba(0, 0, 0, 0.15);
+            --shadow-xl: 0 20px 50px rgba(0, 0, 0, 0.2);
+        }
+
+        html, body {
+            font-family: 'Poppins', sans-serif;
+            background: var(--bg-light);
+            color: var(--text-dark);
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* ===== LAYOUT ===== */
+        .app-container {
+            display: flex;
+            height: 100vh;
+            background: var(--bg-light);
+        }
+
+        /* ===== SIDEBAR ===== */
+        .sidebar {
+            width: 280px;
+            background: linear-gradient(135deg, var(--sidebar-bg) 0%, #E8F5E9 100%);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
+            overflow-y: auto;
+            transition: all 0.3s ease;
+            z-index: 100;
+        }
+
+        .sidebar.mobile-hidden {
+            transform: translateX(-100%);
+            position: absolute;
+            height: 100%;
+        }
+
+        .sidebar-header {
+            padding: 32px 24px;
+            border-bottom: 1px solid var(--border-color);
+            background: linear-gradient(135deg, #FFFFFF 0%, var(--sidebar-bg) 100%);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 8px;
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-x) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            letter-spacing: -0.5px;
+        }
+
+        .logo-x {
+            font-size: 28px;
+            font-weight: 900;
+            color: var(--accent-x);
+            animation: pulse-x 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-x {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        .logo-subtitle {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-nav {
+            flex: 1;
+            padding: 24px 16px;
+        }
+
+        .nav-section {
+            margin-bottom: 24px;
+        }
+
+        .nav-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            padding: 0 12px;
+            margin-bottom: 12px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: var(--text-dark);
+            font-weight: 500;
+            font-size: 14px;
+            border: 2px solid transparent;
+            position: relative;
+        }
+
+        .nav-item:hover {
+            background: rgba(16, 185, 129, 0.1);
+            border-color: var(--primary-green);
+            transform: translateX(4px);
+        }
+
+        .nav-item.active {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+        }
+
+        .nav-item-icon {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        .sidebar-footer {
+            padding: 20px 24px;
+            border-top: 1px solid var(--border-color);
+            font-size: 12px;
+            color: var(--text-light);
+            text-align: center;
+        }
+
+        /* ===== MAIN CONTENT ===== */
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* ===== TOPBAR ===== */
+        .topbar {
+            height: 70px;
+            background: white;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 32px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .menu-toggle {
+            display: none;
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle:hover {
+            color: var(--primary-green);
+            transform: scale(1.1);
+        }
+
+        .topbar-title {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 24px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-x) 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 700;
+            font-size: 16px;
+        }
+
+        .user-details h4 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .user-details p {
+            font-size: 12px;
+            color: var(--text-light);
+        }
+
+        .btn-logout {
+            padding: 8px 16px;
+            background: transparent;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            font-size: 13px;
+        }
+
+        .btn-logout:hover {
+            border-color: var(--accent-x);
+            color: var(--accent-x);
+            background: rgba(255, 107, 53, 0.05);
+        }
+
+        /* ===== CONTENT AREA ===== */
+        .content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 40px;
+            background: var(--bg-light);
+        }
+
+        .page-header {
+            margin-bottom: 40px;
+        }
+
+        .page-title {
+            font-size: 36px;
+            font-weight: 800;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, var(--text-dark) 0%, var(--primary-green) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .page-subtitle {
+            font-size: 14px;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        /* ===== PAGES ===== */
+        .page {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ===== HOME PAGE ===== */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 24px;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 28px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--primary-green) 0%, var(--accent-x) 100%);
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .card:hover {
+            box-shadow: var(--shadow-lg);
+            transform: translateY(-8px);
+            border-color: var(--primary-green);
+        }
+
+        .card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .card-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .card-description {
+            font-size: 14px;
+            color: var(--text-light);
+            margin-bottom: 16px;
+            line-height: 1.6;
+        }
+
+        .card-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary-green);
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .card-link:hover {
+            gap: 12px;
+            color: var(--accent-x);
+        }
+
+        /* ===== STATS ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            box-shadow: var(--shadow-md);
+            transform: translateY(-4px);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-light);
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 800;
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--accent-x) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        /* ===== FORMS ===== */
+        .form-container {
+            background: white;
+            border-radius: 16px;
+            padding: 32px;
+            border: 1px solid var(--border-color);
+            box-shadow: var(--shadow-sm);
+            max-width: 800px;
+            margin-bottom: 32px;
+        }
+
+        .form-group {
+            margin-bottom: 24px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 13px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .form-input,
+        .form-select,
+        .form-textarea {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 14px;
+            color: var(--text-dark);
+            transition: all 0.3s ease;
+            background: white;
+        }
+
+        .form-input:focus,
+        .form-select:focus,
+        .form-textarea:focus {
+            outline: none;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .form-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+
+        /* ===== BUTTONS ===== */
+        .btn {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-green) 0%, var(--primary-green-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: var(--primary-green);
+            border: 2px solid var(--primary-green);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(16, 185, 129, 0.05);
+            transform: translateY(-2px);
+        }
+
+        .btn-accent {
+            background: linear-gradient(135deg, var(--accent-x) 0%, var(--accent-x-dark) 100%);
+            color: white;
+            box-shadow: 0 4px 15px rgba(255, 107, 53, 0.3);
+        }
+
+        .btn-accent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 107, 53, 0.4);
+        }
+
+        .btn-small {
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+
+        /* ===== TABLE ===== */
+        .table-container {
+            background: white;
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            box-shadow: var(--shadow-sm);
+            margin-bottom: 32px;
+        }
+
+        .table-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #FFFFFF 0%, var(--sidebar-bg) 100%);
+        }
+
+        .table-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .table-search {
+            position: relative;
+            width: 300px;
+        }
+
+        .table-search input {
+            width: 100%;
+            padding: 10px 16px 10px 40px;
+            border: 2px solid var(--border-color);
+            border-radius: 10px;
+            font-family: 'Poppins', sans-serif;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .table-search input:focus {
+            outline: none;
+            border-color: var(--primary-green);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .table-search::before {
+            content: '🔍';
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead tr {
+            background: linear-gradient(135deg, #F8FAFC 0%, #F0F9F7 100%);
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        th {
+            padding: 16px 24px;
+            text-align: left;
+            font-size: 12px;
+            font-weight: 700;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        td {
+            padding: 16px 24px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+            color: var(--text-dark);
+        }
+
+        tbody tr {
+            transition: all 0.3s ease;
+        }
+
+        tbody tr:hover {
+            background: rgba(16, 185, 129, 0.05);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+            background: rgba(16, 185, 129, 0.1);
+            color: var(--primary-green);
+        }
+
+        .badge.accent {
+            background: rgba(255, 107, 53, 0.1);
+            color: var(--accent-x);
+        }
+
+        /* ===== MODAL ===== */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: var(--shadow-xl);
+            animation: slideUp 0.3s ease;
+        }
+
+        @keyframes slideUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .modal-title {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: var(--text-light);
+            transition: all 0.3s ease;
+        }
+
+        .modal-close:hover {
+            color: var(--accent-x);
+            transform: rotate(90deg);
+        }
+
+        /* ===== RESPONSIVE ===== */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                top: 0;
+                height: 100%;
+                width: 280px;
+                z-index: 200;
+            }
+
+            .sidebar.mobile-hidden {
+                transform: translateX(-100%);
+            }
+
+            .menu-toggle {
+                display: block;
+            }
+
+            .topbar {
+                padding: 0 16px;
+            }
+
+            .content {
+                padding: 20px;
+            }
+
+            .page-title {
+                font-size: 28px;
+            }
+
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .table-search {
+                width: 100%;
+                max-width: 250px;
+            }
+
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+
+            .modal-content {
+                padding: 24px;
+            }
+
+            .topbar-right {
+                gap: 12px;
+            }
+
+            .user-details {
+                display: none;
+            }
+        }
+
+        /* ===== SCROLLBAR ===== */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-green);
+        }
+
+        /* ===== ANIMATIONS ===== */
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInRight {
+            from {
+                transform: translateX(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .card {
+            animation: slideInRight 0.5s ease;
+        }
+
+        .card:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .card:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        /* ===== EMPTY STATE ===== */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state-icon {
+            font-size: 64px;
+            margin-bottom: 16px;
+        }
+
+        .empty-state-title {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+        }
+
+        .empty-state-description {
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- SIDEBAR -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div>
+                        <div class="logo-text">VIND<span class="logo-x">X</span></div>
+                        <div class="logo-subtitle">Gestão Clínica</div>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <!-- Cadastro Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Cadastro</div>
+                    <div class="nav-item active" id="nav-home" data-page="home">
+                        <span class="nav-item-icon">🏠</span>
+                        <span>Dashboard</span>
+                    </div>
+                    <div class="nav-item" id="nav-pessoas" data-page="pessoas">
+                        <span class="nav-item-icon">👥</span>
+                        <span>Terapeutas / Pacientes</span>
+                    </div>
+                    <div class="nav-item" id="nav-especialidades" data-page="especialidades">
+                        <span class="nav-item-icon">🏥</span>
+                        <span>Especialidades</span>
+                    </div>
+                </div>
+
+                <!-- Evolução Section -->
+                <div class="nav-section">
+                    <div class="nav-section-title">Evolução</div>
+                    <div class="nav-item" id="nav-evolucao-geral" data-page="evolucao-geral">
+                        <span class="nav-item-icon">📊</span>
+                        <span>Registros Clínicos</span>
+                    </div>
+                    <div class="nav-item" id="nav-evolucao-resumido" data-page="evolucao-resumido">
+                        <span class="nav-item-icon">📋</span>
+                        <span>Relatórios</span>
+                    </div>
+                </div>
+            </nav>
+
+            <div class="sidebar-footer">
+                © 2026 VINDIX<br>Sistema de Gestão Clínica
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT -->
+        <div class="main-content">
+            <!-- TOPBAR -->
+            <header class="topbar">
+                <div class="topbar-left">
+                    <button class="menu-toggle" id="menu-toggle">☰</button>
+                    <div class="topbar-title" id="topbar-title">Dashboard</div>
+                </div>
+
+                <div class="topbar-right">
+                    <div class="user-info">
+                        <div class="user-avatar" id="user-avatar">A</div>
+                        <div class="user-details">
+                            <h4 id="user-name">Administrador</h4>
+                            <p>Sistema VINDIX</p>
+                        </div>
+                    </div>
+                    <button class="btn-logout" id="btn-logout">Sair</button>
+                </div>
+            </header>
+
+            <!-- CONTENT AREA -->
+            <div class="content" id="content">
+                <!-- HOME PAGE -->
+                <div class="page active" id="page-home">
+                    <div class="page-header">
+                        <h1 class="page-title">Bem-vindo ao VINDIX</h1>
+                        <p class="page-subtitle">Sistema de Gestão Clínica e Terapêutica</p>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <div class="card" onclick="navigateTo('pessoas')">
+                            <div class="card-icon">👥</div>
+                            <h3 class="card-title">Cadastro de Pessoas</h3>
+                            <p class="card-description">Gerencie terapeutas, pacientes e suas especialidades</p>
+                            <a class="card-link">Acessar →</a>
+                        </div>
+
+                        <div class="card" onclick="navigateTo('evolucao-geral')">
+                            <div class="card-icon">📊</div>
+                            <h3 class="card-title">Registros Clínicos</h3>
+                            <p class="card-description">Acompanhe a evolução dos pacientes em detalhes</p>
+                            <a class="card-link">Acessar →</a>
+                        </div>
+
+                        <div class="card" onclick="navigateTo('evolucao-resumido')">
+                            <div class="card-icon">📋</div>
+                            <h3 class="card-title">Relatórios</h3>
+                            <p class="card-description">Gere relatórios filtrados de atendimentos</p>
+                            <a class="card-link">Acessar →</a>
+                        </div>
+                    </div>
+
+                    <div class="page-header" style="margin-top: 40px;">
+                        <h2 class="page-title" style="font-size: 24px;">Estatísticas Rápidas</h2>
+                    </div>
+
+                    <div class="stats-grid">
+                        <div class="stat-card">
+                            <div class="stat-label">Total de Pacientes</div>
+                            <div class="stat-value" id="stat-pacientes">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Total de Terapeutas</div>
+                            <div class="stat-value" id="stat-terapeutas">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Atendimentos</div>
+                            <div class="stat-value" id="stat-atendimentos">0</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-label">Especialidades</div>
+                            <div class="stat-value" id="stat-especialidades">7</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PESSOAS PAGE -->
+                <div class="page" id="page-pessoas">
+                    <div class="page-header">
+                        <h1 class="page-title">Terapeutas / Pacientes</h1>
+                        <p class="page-subtitle">Gerencie todos os cadastros do sistema</p>
+                    </div>
+
+                    <button class="btn btn-primary" id="btn-new-pessoa" onclick="openModalPessoa()">
+                        ➕ Novo Cadastro
+                    </button>
+
+                    <div class="table-container" style="margin-top: 24px;">
+                        <div class="table-header">
+                            <div class="table-title">Cadastros</div>
+                            <div class="table-search">
+                                <input type="text" id="search-pessoas" placeholder="Buscar...">
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Nome</th>
+                                    <th>Tipo</th>
+                                    <th>Telefone</th>
+                                    <th>Especialidades</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-pessoas">
+                                <tr>
+                                    <td colspan="6" class="empty-state">
+                                        <div class="empty-state-icon">📭</div>
+                                        <div class="empty-state-title">Nenhum cadastro encontrado</div>
+                                        <div class="empty-state-description">Clique em "Novo Cadastro" para começar</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- ESPECIALIDADES PAGE -->
+                <div class="page" id="page-especialidades">
+                    <div class="page-header">
+                        <h1 class="page-title">Especialidades</h1>
+                        <p class="page-subtitle">Gerencie as especialidades disponíveis</p>
+                    </div>
+
+                    <div style="display: flex; gap: 12px; margin-bottom: 24px;">
+                        <input type="text" class="form-input" id="input-especialidade" placeholder="Nova especialidade..." style="flex: 1;">
+                        <button class="btn btn-primary" onclick="addEspecialidade()">Adicionar</button>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Especialidade</th>
+                                    <th>Data de Criação</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-especialidades">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- EVOLUÇÃO GERAL PAGE -->
+                <div class="page" id="page-evolucao-geral">
+                    <div class="page-header">
+                        <h1 class="page-title">Registros Clínicos</h1>
+                        <p class="page-subtitle">Acompanhe a evolução dos pacientes</p>
+                    </div>
+
+                    <button class="btn btn-primary" id="btn-new-evolucao" onclick="openModalEvolucao()">
+                        ➕ Novo Registro
+                    </button>
+
+                    <div class="table-container" style="margin-top: 24px;">
+                        <div class="table-header">
+                            <div class="table-title">Registros de Evolução</div>
+                            <div class="table-search">
+                                <input type="text" id="search-evolucao" placeholder="Buscar...">
+                            </div>
+                        </div>
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Data</th>
+                                    <th>Paciente</th>
+                                    <th>Profissional</th>
+                                    <th>Especialidade</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-evolucao">
+                                <tr>
+                                    <td colspan="6" class="empty-state">
+                                        <div class="empty-state-icon">📭</div>
+                                        <div class="empty-state-title">Nenhum registro encontrado</div>
+                                        <div class="empty-state-description">Clique em "Novo Registro" para começar</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- EVOLUÇÃO RESUMIDO PAGE -->
+                <div class="page" id="page-evolucao-resumido">
+                    <div class="page-header">
+                        <h1 class="page-title">Relatórios</h1>
+                        <p class="page-subtitle">Gere relatórios filtrados de atendimentos</p>
+                    </div>
+
+                    <div class="form-container">
+                        <h3 style="font-size: 18px; font-weight: 700; margin-bottom: 20px; color: var(--text-dark);">Filtros</h3>
+                        
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Paciente</label>
+                                <select class="form-select" id="filter-paciente">
+                                    <option value="">Todos os pacientes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Terapeuta</label>
+                                <select class="form-select" id="filter-terapeuta">
+                                    <option value="">Todos os terapeutas</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Especialidade</label>
+                                <select class="form-select" id="filter-especialidade">
+                                    <option value="">Todas as especialidades</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label">Data Inicial</label>
+                                <input type="date" class="form-input" id="filter-data-inicial">
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">Data Final</label>
+                                <input type="date" class="form-input" id="filter-data-final">
+                            </div>
+                        </div>
+
+                        <div style="display: flex; gap: 12px;">
+                            <button class="btn btn-primary" onclick="generateReport()">🖨️ Imprimir</button>
+                            <button class="btn btn-secondary" onclick="exportReport()">📥 Exportar</button>
+                        </div>
+                    </div>
+
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Data</th>
+                                    <th>Paciente</th>
+                                    <th>Terapeuta</th>
+                                    <th>Especialidade</th>
+                                    <th>Diagnóstico</th>
+                                </tr>
+                            </thead>
+                            <tbody id="table-relatorio">
+                                <tr>
+                                    <td colspan="5" class="empty-state">
+                                        <div class="empty-state-icon">📭</div>
+                                        <div class="empty-state-title">Nenhum registro encontrado</div>
+                                        <div class="empty-state-description">Ajuste os filtros e tente novamente</div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL PESSOA -->
+    <div class="modal" id="modal-pessoa">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modal-pessoa-title">Novo Cadastro</h2>
+                <button class="modal-close" onclick="closeModalPessoa()">✕</button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Código</label>
+                <input type="text" class="form-input" id="input-pessoa-codigo" disabled>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Nome *</label>
+                    <input type="text" class="form-input" id="input-pessoa-nome" placeholder="Nome completo">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Tipo *</label>
+                    <select class="form-select" id="input-pessoa-tipo" onchange="updateTipoChange()">
+                        <option value="Paciente">Paciente</option>
+                        <option value="Profissional">Profissional</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Data de Nascimento</label>
+                    <input type="date" class="form-input" id="input-pessoa-data-nascimento">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Telefone *</label>
+                    <input type="tel" class="form-input" id="input-pessoa-telefone" placeholder="(11) 98765-4321">
+                </div>
+            </div>
+
+            <div class="form-group" id="form-especialidades" style="display: none;">
+                <label class="form-label">Áreas de Atuação</label>
+                <div id="especialidades-checkboxes" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;"></div>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button class="btn btn-primary" onclick="savePessoa()">Salvar</button>
+                <button class="btn btn-secondary" onclick="closeModalPessoa()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL EVOLUÇÃO -->
+    <div class="modal" id="modal-evolucao">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title">Novo Registro de Evolução</h2>
+                <button class="modal-close" onclick="closeModalEvolucao()">✕</button>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Código</label>
+                <input type="text" class="form-input" id="input-evolucao-codigo" disabled>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Data da Sessão *</label>
+                    <input type="date" class="form-input" id="input-evolucao-data">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Paciente *</label>
+                    <select class="form-select" id="input-evolucao-paciente"></select>
+                </div>
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Profissional *</label>
+                    <select class="form-select" id="input-evolucao-profissional"></select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Especialidade *</label>
+                    <select class="form-select" id="input-evolucao-especialidade"></select>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Idade</label>
+                <input type="number" class="form-input" id="input-evolucao-idade" placeholder="Idade do paciente">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Diagnóstico</label>
+                <input type="text" class="form-input" id="input-evolucao-diagnostico" placeholder="Diagnóstico">
+            </div>
+
+            <div class="form-group">
+                <label class="form-label">Resumo da Sessão</label>
+                <textarea class="form-textarea" id="input-evolucao-resumo" placeholder="Descreva o resumo da sessão..."></textarea>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-top: 32px;">
+                <button class="btn btn-primary" onclick="saveEvolucao()">Salvar</button>
+                <button class="btn btn-secondary" onclick="closeModalEvolucao()">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== DATA STORAGE =====
+        let pessoas = [
+            {
+                id: 1,
+                codigo: 'P001',
+                nome: 'João Silva',
+                tipo: 'Paciente',
+                dataNascimento: '2015-05-15',
+                telefone: '(11) 98765-4321',
+                especialidades: []
+            },
+            {
+                id: 2,
+                codigo: 'T001',
+                nome: 'Dra. Maria Santos',
+                tipo: 'Profissional',
+                dataNascimento: '1985-03-20',
+                telefone: '(11) 99876-5432',
+                especialidades: ['Fonoaudiologia', 'Psicologia']
+            }
+        ];
+
+        let especialidades = [
+            'Fonoaudiologia',
+            'Psicologia',
+            'ABA',
+            'Terapia Ocupacional',
+            'Musicoterapia',
+            'Psicopedagogia',
+            'Fisioterapia'
+        ];
+
+        let evolucoes = [
+            {
+                id: 1,
+                codigo: 'EV001',
+                data: '2026-03-15',
+                paciente: 'João Silva',
+                profissional: 'Dra. Maria Santos',
+                especialidade: 'Fonoaudiologia',
+                idade: 8,
+                diagnostico: 'Atraso na linguagem expressiva',
+                resumo: 'Sessão focada em estimulação da linguagem com atividades lúdicas.'
+            }
+        ];
+
+        let editingPessoaId = null;
+        let editingEvolucaoId = null;
+
+        // ===== NAVIGATION =====
+        function navigateTo(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById('page-' + page).classList.add('active');
+
+            document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+            document.getElementById('nav-' + page).classList.add('active');
+
+            const titles = {
+                'home': 'Dashboard',
+                'pessoas': 'Terapeutas / Pacientes',
+                'especialidades': 'Especialidades',
+                'evolucao-geral': 'Registros Clínicos',
+                'evolucao-resumido': 'Relatórios'
+            };
+            document.getElementById('topbar-title').textContent = titles[page] || 'Dashboard';
+
+            if (page === 'home') {
+                updateStats();
+            } else if (page === 'pessoas') {
+                renderTablePessoas();
+            } else if (page === 'especialidades') {
+                renderTableEspecialidades();
+            } else if (page === 'evolucao-geral') {
+                renderTableEvolucao();
+            } else if (page === 'evolucao-resumido') {
+                populateFilters();
+            }
+
+            closeMobileMenu();
+        }
+
+        // ===== MENU TOGGLE =====
+        document.getElementById('menu-toggle').addEventListener('click', function() {
+            document.getElementById('sidebar').classList.toggle('mobile-hidden');
+        });
+
+        function closeMobileMenu() {
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.add('mobile-hidden');
+            }
+        }
+
+        // ===== NAVIGATION ITEMS =====
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function() {
+                const page = this.getAttribute('data-page');
+                navigateTo(page);
+            });
+        });
+
+        // ===== STATS =====
+        function updateStats() {
+            const pacientes = pessoas.filter(p => p.tipo === 'Paciente').length;
+            const terapeutas = pessoas.filter(p => p.tipo === 'Profissional').length;
+            document.getElementById('stat-pacientes').textContent = pacientes;
+            document.getElementById('stat-terapeutas').textContent = terapeutas;
+            document.getElementById('stat-atendimentos').textContent = evolucoes.length;
+        }
+
+        // ===== PESSOAS CRUD =====
+        function openModalPessoa() {
+            editingPessoaId = null;
+            document.getElementById('modal-pessoa-title').textContent = 'Novo Cadastro';
+            document.getElementById('input-pessoa-codigo').value = 'P' + String(pessoas.length + 1).padStart(3, '0');
+            document.getElementById('input-pessoa-nome').value = '';
+            document.getElementById('input-pessoa-tipo').value = 'Paciente';
+            document.getElementById('input-pessoa-data-nascimento').value = '';
+            document.getElementById('input-pessoa-telefone').value = '';
+            document.getElementById('form-especialidades').style.display = 'none';
+            document.getElementById('modal-pessoa').classList.add('active');
+            renderEspecialidadesCheckboxes();
+        }
+
+        function closeModalPessoa() {
+            document.getElementById('modal-pessoa').classList.remove('active');
+        }
+
+        function updateTipoChange() {
+            const tipo = document.getElementById('input-pessoa-tipo').value;
+            const formEsp = document.getElementById('form-especialidades');
+            formEsp.style.display = tipo === 'Profissional' ? 'block' : 'none';
+        }
+
+        function renderEspecialidadesCheckboxes() {
+            const container = document.getElementById('especialidades-checkboxes');
+            container.innerHTML = '';
+            especialidades.forEach(esp => {
+                const label = document.createElement('label');
+                label.style.display = 'flex';
+                label.style.alignItems = 'center';
+                label.style.gap = '8px';
+                label.style.cursor = 'pointer';
+                label.innerHTML = `
+                    <input type="checkbox" value="${esp}" style="width: 18px; height: 18px; cursor: pointer;">
+                    <span>${esp}</span>
+                `;
+                container.appendChild(label);
+            });
+        }
+
+        function savePessoa() {
+            const nome = document.getElementById('input-pessoa-nome').value.trim();
+            const tipo = document.getElementById('input-pessoa-tipo').value;
+            const telefone = document.getElementById('input-pessoa-telefone').value.trim();
+            const dataNascimento = document.getElementById('input-pessoa-data-nascimento').value;
+            const codigo = document.getElementById('input-pessoa-codigo').value;
+
+            if (!nome || !telefone) {
+                alert('Preencha todos os campos obrigatórios');
+                return;
+            }
+
+            let especialidadesSelecionadas = [];
+            if (tipo === 'Profissional') {
+                document.querySelectorAll('#especialidades-checkboxes input[type="checkbox"]:checked').forEach(cb => {
+                    especialidadesSelecionadas.push(cb.value);
+                });
+            }
+
+            if (editingPessoaId) {
+                const pessoa = pessoas.find(p => p.id === editingPessoaId);
+                pessoa.nome = nome;
+                pessoa.tipo = tipo;
+                pessoa.telefone = telefone;
+                pessoa.dataNascimento = dataNascimento;
+                pessoa.especialidades = especialidadesSelecionadas;
+            } else {
+                pessoas.push({
+                    id: Date.now(),
+                    codigo: codigo,
+                    nome: nome,
+                    tipo: tipo,
+                    dataNascimento: dataNascimento,
+                    telefone: telefone,
+                    especialidades: especialidadesSelecionadas
+                });
+            }
+
+            closeModalPessoa();
+            renderTablePessoas();
+            updateStats();
+        }
+
+        function deletePessoa(id) {
+            if (confirm('Tem certeza que deseja excluir este cadastro?')) {
+                pessoas = pessoas.filter(p => p.id !== id);
+                renderTablePessoas();
+                updateStats();
+            }
+        }
+
+        function renderTablePessoas() {
+            const tbody = document.getElementById('table-pessoas');
+            const searchTerm = document.getElementById('search-pessoas').value.toLowerCase();
+            const filtered = pessoas.filter(p => 
+                p.nome.toLowerCase().includes(searchTerm) ||
+                p.codigo.toLowerCase().includes(searchTerm) ||
+                p.telefone.includes(searchTerm)
+            );
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-title">Nenhum cadastro encontrado</div>
+                            <div class="empty-state-description">Clique em "Novo Cadastro" para começar</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(p => `
+                <tr>
+                    <td><strong>${p.codigo}</strong></td>
+                    <td>${p.nome}</td>
+                    <td><span class="badge ${p.tipo === 'Profissional' ? 'accent' : ''}">${p.tipo}</span></td>
+                    <td>${p.telefone}</td>
+                    <td>${p.especialidades.join(', ') || '—'}</td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="editPessoa(${p.id})">✏️</button>
+                        <button class="btn btn-small btn-secondary" onclick="deletePessoa(${p.id})" style="background: rgba(255, 107, 53, 0.1); color: var(--accent-x); border-color: var(--accent-x);">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editPessoa(id) {
+            const pessoa = pessoas.find(p => p.id === id);
+            editingPessoaId = id;
+            document.getElementById('modal-pessoa-title').textContent = 'Editar Cadastro';
+            document.getElementById('input-pessoa-codigo').value = pessoa.codigo;
+            document.getElementById('input-pessoa-nome').value = pessoa.nome;
+            document.getElementById('input-pessoa-tipo').value = pessoa.tipo;
+            document.getElementById('input-pessoa-data-nascimento').value = pessoa.dataNascimento;
+            document.getElementById('input-pessoa-telefone').value = pessoa.telefone;
+            document.getElementById('form-especialidades').style.display = pessoa.tipo === 'Profissional' ? 'block' : 'none';
+            document.getElementById('modal-pessoa').classList.add('active');
+            renderEspecialidadesCheckboxes();
+            document.querySelectorAll('#especialidades-checkboxes input[type="checkbox"]').forEach(cb => {
+                cb.checked = pessoa.especialidades.includes(cb.value);
+            });
+        }
+
+        // ===== ESPECIALIDADES CRUD =====
+        function addEspecialidade() {
+            const input = document.getElementById('input-especialidade');
+            const nome = input.value.trim();
+            if (!nome) {
+                alert('Digite uma especialidade');
+                return;
+            }
+            if (especialidades.includes(nome)) {
+                alert('Esta especialidade já existe');
+                return;
+            }
+            especialidades.push(nome);
+            input.value = '';
+            renderTableEspecialidades();
+        }
+
+        function deleteEspecialidade(index) {
+            if (confirm('Tem certeza que deseja excluir esta especialidade?')) {
+                especialidades.splice(index, 1);
+                renderTableEspecialidades();
+            }
+        }
+
+        function renderTableEspecialidades() {
+            const tbody = document.getElementById('table-especialidades');
+            tbody.innerHTML = especialidades.map((esp, index) => `
+                <tr>
+                    <td><strong>${esp}</strong></td>
+                    <td>${new Date().toLocaleDateString('pt-BR')}</td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="deleteEspecialidade(${index})" style="background: rgba(255, 107, 53, 0.1); color: var(--accent-x); border-color: var(--accent-x);">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // ===== EVOLUÇÃO CRUD =====
+        function openModalEvolucao() {
+            editingEvolucaoId = null;
+            document.getElementById('input-evolucao-codigo').value = 'EV' + String(evolucoes.length + 1).padStart(3, '0');
+            document.getElementById('input-evolucao-data').value = new Date().toISOString().split('T')[0];
+            document.getElementById('input-evolucao-paciente').value = '';
+            document.getElementById('input-evolucao-profissional').value = '';
+            document.getElementById('input-evolucao-especialidade').value = '';
+            document.getElementById('input-evolucao-idade').value = '';
+            document.getElementById('input-evolucao-diagnostico').value = '';
+            document.getElementById('input-evolucao-resumo').value = '';
+            populateEvolucaoSelects();
+            document.getElementById('modal-evolucao').classList.add('active');
+        }
+
+        function closeModalEvolucao() {
+            document.getElementById('modal-evolucao').classList.remove('active');
+        }
+
+        function populateEvolucaoSelects() {
+            const pacientes = pessoas.filter(p => p.tipo === 'Paciente');
+            const profissionais = pessoas.filter(p => p.tipo === 'Profissional');
+
+            document.getElementById('input-evolucao-paciente').innerHTML = 
+                '<option value="">Selecionar paciente...</option>' +
+                pacientes.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+
+            document.getElementById('input-evolucao-profissional').innerHTML = 
+                '<option value="">Selecionar profissional...</option>' +
+                profissionais.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+
+            document.getElementById('input-evolucao-especialidade').innerHTML = 
+                '<option value="">Selecionar especialidade...</option>' +
+                especialidades.map(e => `<option value="${e}">${e}</option>`).join('');
+        }
+
+        function saveEvolucao() {
+            const data = document.getElementById('input-evolucao-data').value;
+            const paciente = document.getElementById('input-evolucao-paciente').value;
+            const profissional = document.getElementById('input-evolucao-profissional').value;
+            const especialidade = document.getElementById('input-evolucao-especialidade').value;
+            const idade = document.getElementById('input-evolucao-idade').value;
+            const diagnostico = document.getElementById('input-evolucao-diagnostico').value;
+            const resumo = document.getElementById('input-evolucao-resumo').value;
+            const codigo = document.getElementById('input-evolucao-codigo').value;
+
+            if (!data || !paciente || !profissional || !especialidade) {
+                alert('Preencha todos os campos obrigatórios');
+                return;
+            }
+
+            if (editingEvolucaoId) {
+                const evolucao = evolucoes.find(e => e.id === editingEvolucaoId);
+                evolucao.data = data;
+                evolucao.paciente = paciente;
+                evolucao.profissional = profissional;
+                evolucao.especialidade = especialidade;
+                evolucao.idade = idade;
+                evolucao.diagnostico = diagnostico;
+                evolucao.resumo = resumo;
+            } else {
+                evolucoes.push({
+                    id: Date.now(),
+                    codigo: codigo,
+                    data: data,
+                    paciente: paciente,
+                    profissional: profissional,
+                    especialidade: especialidade,
+                    idade: idade,
+                    diagnostico: diagnostico,
+                    resumo: resumo
+                });
+            }
+
+            closeModalEvolucao();
+            renderTableEvolucao();
+            updateStats();
+        }
+
+        function deleteEvolucao(id) {
+            if (confirm('Tem certeza que deseja excluir este registro?')) {
+                evolucoes = evolucoes.filter(e => e.id !== id);
+                renderTableEvolucao();
+                updateStats();
+            }
+        }
+
+        function renderTableEvolucao() {
+            const tbody = document.getElementById('table-evolucao');
+            const searchTerm = document.getElementById('search-evolucao').value.toLowerCase();
+            const filtered = evolucoes.filter(e => 
+                e.paciente.toLowerCase().includes(searchTerm) ||
+                e.profissional.toLowerCase().includes(searchTerm) ||
+                e.especialidade.toLowerCase().includes(searchTerm)
+            );
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-title">Nenhum registro encontrado</div>
+                            <div class="empty-state-description">Clique em "Novo Registro" para começar</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(e => `
+                <tr>
+                    <td><strong>${e.codigo}</strong></td>
+                    <td>${e.data}</td>
+                    <td>${e.paciente}</td>
+                    <td>${e.profissional}</td>
+                    <td><span class="badge">${e.especialidade}</span></td>
+                    <td>
+                        <button class="btn btn-small btn-secondary" onclick="editEvolucao(${e.id})">✏️</button>
+                        <button class="btn btn-small btn-secondary" onclick="deleteEvolucao(${e.id})" style="background: rgba(255, 107, 53, 0.1); color: var(--accent-x); border-color: var(--accent-x);">🗑️</button>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        function editEvolucao(id) {
+            const evolucao = evolucoes.find(e => e.id === id);
+            editingEvolucaoId = id;
+            document.getElementById('input-evolucao-codigo').value = evolucao.codigo;
+            document.getElementById('input-evolucao-data').value = evolucao.data;
+            document.getElementById('input-evolucao-paciente').value = evolucao.paciente;
+            document.getElementById('input-evolucao-profissional').value = evolucao.profissional;
+            document.getElementById('input-evolucao-especialidade').value = evolucao.especialidade;
+            document.getElementById('input-evolucao-idade').value = evolucao.idade;
+            document.getElementById('input-evolucao-diagnostico').value = evolucao.diagnostico;
+            document.getElementById('input-evolucao-resumo').value = evolucao.resumo;
+            populateEvolucaoSelects();
+            document.getElementById('modal-evolucao').classList.add('active');
+        }
+
+        // ===== SEARCH =====
+        document.getElementById('search-pessoas').addEventListener('input', renderTablePessoas);
+        document.getElementById('search-evolucao').addEventListener('input', renderTableEvolucao);
+
+        // ===== RELATÓRIOS =====
+        function populateFilters() {
+            const pacientes = pessoas.filter(p => p.tipo === 'Paciente');
+            const profissionais = pessoas.filter(p => p.tipo === 'Profissional');
+
+            document.getElementById('filter-paciente').innerHTML = 
+                '<option value="">Todos os pacientes</option>' +
+                pacientes.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+
+            document.getElementById('filter-terapeuta').innerHTML = 
+                '<option value="">Todos os terapeutas</option>' +
+                profissionais.map(p => `<option value="${p.nome}">${p.nome}</option>`).join('');
+
+            document.getElementById('filter-especialidade').innerHTML = 
+                '<option value="">Todas as especialidades</option>' +
+                especialidades.map(e => `<option value="${e}">${e}</option>`).join('');
+
+            renderRelatorio();
+        }
+
+        function renderRelatorio() {
+            const paciente = document.getElementById('filter-paciente').value;
+            const terapeuta = document.getElementById('filter-terapeuta').value;
+            const especialidade = document.getElementById('filter-especialidade').value;
+            const dataInicial = document.getElementById('filter-data-inicial').value;
+            const dataFinal = document.getElementById('filter-data-final').value;
+
+            let filtered = evolucoes;
+
+            if (paciente) filtered = filtered.filter(e => e.paciente === paciente);
+            if (terapeuta) filtered = filtered.filter(e => e.profissional === terapeuta);
+            if (especialidade) filtered = filtered.filter(e => e.especialidade === especialidade);
+            if (dataInicial) filtered = filtered.filter(e => e.data >= dataInicial);
+            if (dataFinal) filtered = filtered.filter(e => e.data <= dataFinal);
+
+            const tbody = document.getElementById('table-relatorio');
+            if (filtered.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="5" class="empty-state">
+                            <div class="empty-state-icon">📭</div>
+                            <div class="empty-state-title">Nenhum registro encontrado</div>
+                            <div class="empty-state-description">Ajuste os filtros e tente novamente</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = filtered.map(e => `
+                <tr>
+                    <td>${e.data}</td>
+                    <td>${e.paciente}</td>
+                    <td>${e.profissional}</td>
+                    <td><span class="badge">${e.especialidade}</span></td>
+                    <td>${e.diagnostico}</td>
+                </tr>
+            `).join('');
+        }
+
+        document.getElementById('filter-paciente').addEventListener('change', renderRelatorio);
+        document.getElementById('filter-terapeuta').addEventListener('change', renderRelatorio);
+        document.getElementById('filter-especialidade').addEventListener('change', renderRelatorio);
+        document.getElementById('filter-data-inicial').addEventListener('change', renderRelatorio);
+        document.getElementById('filter-data-final').addEventListener('change', renderRelatorio);
+
+        function generateReport() {
+            alert('Funcionalidade de impressão em desenvolvimento');
+        }
+
+        function exportReport() {
+            alert('Funcionalidade de exportação em desenvolvimento');
+        }
+
+        // ===== LOGOUT =====
+        document.getElementById('btn-logout').addEventListener('click', function() {
+            if (confirm('Tem certeza que deseja sair?')) {
+                alert('Logout realizado com sucesso');
+            }
+        });
+
+        // ===== INITIALIZE =====
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTableEspecialidades();
+            updateStats();
+        });
+    </script>
+</body>
+</html>
