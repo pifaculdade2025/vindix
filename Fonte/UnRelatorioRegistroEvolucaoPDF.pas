@@ -60,7 +60,7 @@ const
   // Courier 8pt: ~5.5pt por char. Col texto ~400pt → ~72 chars
   // mantemos 69 para dar margem de seguranca
   MAX_COLS       = 58;
-  MAX_LINHAS_PAG = 42;
+  MAX_LINHAS_PAG = 43;
 
 // --------------------------------------------------------------------------
 // Escape de string para PDF (latin-1 / WinAnsi)
@@ -178,11 +178,11 @@ begin
           CountLinhas := 0;
           Result.Add('---QUEBRA_PAGINA---');
         end;
-        if CountLinhas = MaxLinhas then
-        begin
-          CountLinhas := 0;
-          Result.Add('---QUEBRA_PAGINA---');
-        end;
+//        if CountLinhas = MaxLinhas then
+//        begin
+//          CountLinhas := 0;
+//          Result.Add('---QUEBRA_PAGINA---');
+//        end;
         Result.Add(Linha);
         Inc(CountLinhas);
         Linha := '';
@@ -196,24 +196,21 @@ begin
         CountLinhas := 0;
         Result.Add('---QUEBRA_PAGINA---');
       end;
-      if CountLinhas = MaxLinhas then
-      begin
-        CountLinhas := 0;
-        Result.Add('---QUEBRA_PAGINA---');
-      end;
+//      if CountLinhas = MaxLinhas then
+//      begin
+//        CountLinhas := 0;
+//        Result.Add('---QUEBRA_PAGINA---');
+//      end;
       Result.Add(Linha);
       Inc(CountLinhas);
       Linha := '';
     end;
   end;
 
-  if MaxLinhas > CountLinhas then
+  if 37 > Result.Count then
   begin
-    while CountLinhas < MaxLinhas do
+    while Result.Count < 37 do
     begin
-      Inc(CountLinhas);
-      if Result.Count = MaxLinhas then
-        Result.Add('---QUEBRA_PAGINA---');
       Result.Add('');
     end;
   end
@@ -221,9 +218,7 @@ begin
   begin
     while CountLinhas < MAX_LINHAS_PAG do
     begin
-      Inc(CountLinhas);
-      if Result.Count = MAX_LINHAS_PAG then
-        Result.Add('---QUEBRA_PAGINA---');
+      inc(CountLinhas);
       Result.Add('');
     end;
   end;
@@ -474,6 +469,7 @@ var
   procedure CabCont;
   begin
     // paginas de continuacao comecam direto o conteudo
+    CurY := CurY + 10;
   end;
 
   function LinhasCabem: Integer;
