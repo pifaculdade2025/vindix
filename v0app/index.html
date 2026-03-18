@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VindX - Sistema de Gestao Clinica</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- TELA DE LOGIN -->
+  <div id="tela-login" class="login-container">
+    <div class="login-box">
+      <div class="login-logo">
+        <div class="logo-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <h1>VindX</h1>
+        <p>Sistema de Gestao Clinica</p>
+      </div>
+      
+      <form id="form-login" onsubmit="fazerLogin(event)">
+        <div class="form-group">
+          <label for="login-usuario">Usuario</label>
+          <input type="text" id="login-usuario" placeholder="Digite seu usuario" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="login-senha">Senha</label>
+          <input type="password" id="login-senha" placeholder="Digite sua senha" required>
+        </div>
+        
+        <div id="login-erro" class="erro-msg" style="display: none;"></div>
+        
+        <button type="submit" id="login-btn" class="btn btn-primary btn-block">
+          Entrar
+        </button>
+      </form>
+      
+      <div class="login-footer">
+        <p>Humanizare - Gestao Terapeutica</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- SISTEMA PRINCIPAL -->
+  <div id="tela-sistema" class="sistema-container" style="display: none;">
+    
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="sidebar">
+      <div class="sidebar-header">
+        <div class="logo-mini">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+          </svg>
+        </div>
+        <span class="logo-text">VindX</span>
+      </div>
+      
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-item active" data-pagina="dashboard" onclick="navegarPara('dashboard')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="3" y="3" width="7" height="7"/>
+            <rect x="14" y="3" width="7" height="7"/>
+            <rect x="14" y="14" width="7" height="7"/>
+            <rect x="3" y="14" width="7" height="7"/>
+          </svg>
+          <span>Dashboard</span>
+        </a>
+        
+        <div class="nav-section">Cadastros</div>
+        
+        <a href="#" class="nav-item" data-pagina="pacientes" onclick="navegarPara('pacientes')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          <span>Pacientes</span>
+        </a>
+        
+        <a href="#" class="nav-item" data-pagina="terapeutas" onclick="navegarPara('terapeutas')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <circle cx="12" cy="7" r="4"/>
+          </svg>
+          <span>Terapeutas</span>
+        </a>
+        
+        <a href="#" class="nav-item" data-pagina="especialidades" onclick="navegarPara('especialidades')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+          </svg>
+          <span>Especialidades</span>
+        </a>
+        
+        <div class="nav-section">Registros</div>
+        
+        <a href="#" class="nav-item" data-pagina="evolucoes" onclick="navegarPara('evolucoes')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+            <polyline points="14 2 14 8 20 8"/>
+            <line x1="16" y1="13" x2="8" y2="13"/>
+            <line x1="16" y1="17" x2="8" y2="17"/>
+            <polyline points="10 9 9 9 8 9"/>
+          </svg>
+          <span>Evolucoes</span>
+        </a>
+        
+        <a href="#" class="nav-item" data-pagina="relatorios" onclick="navegarPara('relatorios')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <line x1="18" y1="20" x2="18" y2="10"/>
+            <line x1="12" y1="20" x2="12" y2="4"/>
+            <line x1="6" y1="20" x2="6" y2="14"/>
+          </svg>
+          <span>Relatorios</span>
+        </a>
+      </nav>
+      
+      <div class="sidebar-footer">
+        <button class="btn-logout" onclick="fazerLogout()">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+            <polyline points="16 17 21 12 16 7"/>
+            <line x1="21" y1="12" x2="9" y2="12"/>
+          </svg>
+          <span>Sair</span>
+        </button>
+      </div>
+    </aside>
+
+    <!-- CONTEUDO PRINCIPAL -->
+    <main id="conteudo-principal" class="main-content">
+      
+      <!-- HEADER -->
+      <header class="main-header">
+        <div class="header-title">
+          <h2 id="titulo-pagina">Dashboard</h2>
+          <p id="subtitulo-pagina">Visao geral do sistema</p>
+        </div>
+        <div class="header-user">
+          <span id="nome-usuario">Administrador</span>
+          <div class="avatar">A</div>
+        </div>
+      </header>
+
+      <!-- PAGINA DASHBOARD -->
+      <section id="pagina-dashboard" class="pagina">
+        <div class="stats-grid">
+          <div class="stat-card">
+            <div class="stat-icon pacientes">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="total-pacientes">0</span>
+              <span class="stat-label">Pacientes</span>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon terapeutas">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="total-terapeutas">0</span>
+              <span class="stat-label">Terapeutas</span>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon especialidades">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="total-especialidades">0</span>
+              <span class="stat-label">Especialidades</span>
+            </div>
+          </div>
+          
+          <div class="stat-card">
+            <div class="stat-icon evolucoes">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            </div>
+            <div class="stat-info">
+              <span class="stat-value" id="total-evolucoes">0</span>
+              <span class="stat-label">Evolucoes</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="dashboard-grid">
+          <div class="card">
+            <div class="card-header">
+              <h3>Ultimas Evolucoes</h3>
+            </div>
+            <div class="card-body">
+              <table class="tabela">
+                <thead>
+                  <tr>
+                    <th>Data</th>
+                    <th>Paciente</th>
+                    <th>Terapeuta</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody-ultimas-evolucoes">
+                  <tr>
+                    <td colspan="3" class="empty-state">Nenhuma evolucao registrada</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <div class="card">
+            <div class="card-header">
+              <h3>Terapeutas por Especialidade</h3>
+            </div>
+            <div class="card-body">
+              <div id="chart-especialidades" class="chart-container">
+                <p class="empty-state">Nenhum dado disponivel</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGINA PACIENTES -->
+      <section id="pagina-pacientes" class="pagina" style="display: none;">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="abrirModalPaciente()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Novo Paciente
+          </button>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3>Lista de Pacientes</h3>
+            <div class="search-box">
+              <input type="text" id="busca-pacientes" placeholder="Buscar paciente..." onkeyup="filtrarPacientes()">
+            </div>
+          </div>
+          <div class="card-body">
+            <table class="tabela">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Data Nasc.</th>
+                  <th>Telefone</th>
+                  <th>Terapeutas</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-pacientes">
+                <tr>
+                  <td colspan="6" class="empty-state">Nenhum paciente cadastrado</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGINA TERAPEUTAS -->
+      <section id="pagina-terapeutas" class="pagina" style="display: none;">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="abrirModalTerapeuta()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Novo Terapeuta
+          </button>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3>Lista de Terapeutas</h3>
+            <div class="search-box">
+              <input type="text" id="busca-terapeutas" placeholder="Buscar terapeuta..." onkeyup="filtrarTerapeutas()">
+            </div>
+          </div>
+          <div class="card-body">
+            <table class="tabela">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Especialidade</th>
+                  <th>Email</th>
+                  <th>Telefone</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-terapeutas">
+                <tr>
+                  <td colspan="6" class="empty-state">Nenhum terapeuta cadastrado</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGINA ESPECIALIDADES -->
+      <section id="pagina-especialidades" class="pagina" style="display: none;">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="abrirModalEspecialidade()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nova Especialidade
+          </button>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3>Lista de Especialidades</h3>
+          </div>
+          <div class="card-body">
+            <table class="tabela">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Nome</th>
+                  <th>Cor</th>
+                  <th>Terapeutas</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-especialidades">
+                <tr>
+                  <td colspan="5" class="empty-state">Nenhuma especialidade cadastrada</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGINA EVOLUCOES -->
+      <section id="pagina-evolucoes" class="pagina" style="display: none;">
+        <div class="page-actions">
+          <button class="btn btn-primary" onclick="abrirModalEvolucao()">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Nova Evolucao
+          </button>
+        </div>
+        
+        <div class="card">
+          <div class="card-header">
+            <h3>Registros de Evolucao</h3>
+            <div class="search-box">
+              <input type="text" id="busca-evolucoes" placeholder="Buscar evolucao..." onkeyup="filtrarEvolucoes()">
+            </div>
+          </div>
+          <div class="card-body">
+            <table class="tabela">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Data</th>
+                  <th>Paciente</th>
+                  <th>Terapeuta</th>
+                  <th>Resumo</th>
+                  <th>Acoes</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-evolucoes">
+                <tr>
+                  <td colspan="6" class="empty-state">Nenhuma evolucao registrada</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGINA RELATORIOS -->
+      <section id="pagina-relatorios" class="pagina" style="display: none;">
+        <div class="card">
+          <div class="card-header">
+            <h3>Filtros do Relatorio</h3>
+          </div>
+          <div class="card-body">
+            <form id="form-relatorio" class="form-filtros">
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="relatorio-paciente">Paciente</label>
+                  <select id="relatorio-paciente">
+                    <option value="">Todos</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="relatorio-terapeuta">Terapeuta</label>
+                  <select id="relatorio-terapeuta">
+                    <option value="">Todos</option>
+                  </select>
+                </div>
+                
+                <div class="form-group">
+                  <label for="relatorio-especialidade">Especialidade</label>
+                  <select id="relatorio-especialidade">
+                    <option value="">Todas</option>
+                  </select>
+                </div>
+              </div>
+              
+              <div class="form-row">
+                <div class="form-group">
+                  <label for="relatorio-data-inicio">Data Inicio</label>
+                  <input type="date" id="relatorio-data-inicio">
+                </div>
+                
+                <div class="form-group">
+                  <label for="relatorio-data-fim">Data Fim</label>
+                  <input type="date" id="relatorio-data-fim">
+                </div>
+                
+                <div class="form-group form-actions">
+                  <button type="button" class="btn btn-primary" onclick="gerarRelatorio()">
+                    Gerar Relatorio
+                  </button>
+                  <button type="button" class="btn btn-secondary" onclick="limparFiltros()">
+                    Limpar
+                  </button>
+                </div>
+              </div>
+            </form>
+          </div>
+        </div>
+        
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header">
+            <h3>Resultado do Relatorio</h3>
+            <button class="btn btn-secondary btn-sm" onclick="exportarRelatorio()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                <polyline points="7 10 12 15 17 10"/>
+                <line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
+              Exportar
+            </button>
+          </div>
+          <div class="card-body">
+            <table class="tabela">
+              <thead>
+                <tr>
+                  <th>Data</th>
+                  <th>Paciente</th>
+                  <th>Terapeuta</th>
+                  <th>Especialidade</th>
+                  <th>Resumo</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-relatorio">
+                <tr>
+                  <td colspan="5" class="empty-state">Use os filtros acima para gerar o relatorio</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL PACIENTE -->
+  <div id="modal-paciente" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-paciente-titulo">Novo Paciente</h3>
+        <button class="btn-close" onclick="fecharModal('modal-paciente')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-paciente" onsubmit="salvarPaciente(event)">
+          <input type="hidden" id="paciente-id">
+          
+          <div class="form-group">
+            <label for="paciente-nome">Nome Completo *</label>
+            <input type="text" id="paciente-nome" required>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="paciente-nascimento">Data de Nascimento</label>
+              <input type="date" id="paciente-nascimento">
+            </div>
+            
+            <div class="form-group">
+              <label for="paciente-cpf">CPF</label>
+              <input type="text" id="paciente-cpf" placeholder="000.000.000-00">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="paciente-telefone">Telefone</label>
+              <input type="text" id="paciente-telefone" placeholder="(00) 00000-0000">
+            </div>
+            
+            <div class="form-group">
+              <label for="paciente-email">Email</label>
+              <input type="email" id="paciente-email">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="paciente-endereco">Endereco</label>
+            <input type="text" id="paciente-endereco">
+          </div>
+          
+          <div class="form-group">
+            <label>Terapeutas Vinculados</label>
+            <div id="paciente-terapeutas" class="checkbox-group">
+              <p class="empty-state">Cadastre terapeutas primeiro</p>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="paciente-observacoes">Observacoes</label>
+            <textarea id="paciente-observacoes" rows="3"></textarea>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-paciente')">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL TERAPEUTA -->
+  <div id="modal-terapeuta" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-terapeuta-titulo">Novo Terapeuta</h3>
+        <button class="btn-close" onclick="fecharModal('modal-terapeuta')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-terapeuta" onsubmit="salvarTerapeuta(event)">
+          <input type="hidden" id="terapeuta-id">
+          
+          <div class="form-group">
+            <label for="terapeuta-nome">Nome Completo *</label>
+            <input type="text" id="terapeuta-nome" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="terapeuta-especialidade">Especialidade *</label>
+            <select id="terapeuta-especialidade" required>
+              <option value="">Selecione...</option>
+            </select>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="terapeuta-crp">CRP/Registro</label>
+              <input type="text" id="terapeuta-crp">
+            </div>
+            
+            <div class="form-group">
+              <label for="terapeuta-telefone">Telefone</label>
+              <input type="text" id="terapeuta-telefone" placeholder="(00) 00000-0000">
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="terapeuta-email">Email</label>
+            <input type="email" id="terapeuta-email">
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-terapeuta')">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL ESPECIALIDADE -->
+  <div id="modal-especialidade" class="modal" style="display: none;">
+    <div class="modal-content modal-sm">
+      <div class="modal-header">
+        <h3 id="modal-especialidade-titulo">Nova Especialidade</h3>
+        <button class="btn-close" onclick="fecharModal('modal-especialidade')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-especialidade" onsubmit="salvarEspecialidade(event)">
+          <input type="hidden" id="especialidade-id">
+          
+          <div class="form-group">
+            <label for="especialidade-nome">Nome *</label>
+            <input type="text" id="especialidade-nome" required placeholder="Ex: Psicologia, Fonoaudiologia">
+          </div>
+          
+          <div class="form-group">
+            <label for="especialidade-cor">Cor</label>
+            <div class="color-picker">
+              <input type="color" id="especialidade-cor" value="#10b981">
+              <span id="especialidade-cor-valor">#10b981</span>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="especialidade-descricao">Descricao</label>
+            <textarea id="especialidade-descricao" rows="2"></textarea>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-especialidade')">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL EVOLUCAO -->
+  <div id="modal-evolucao" class="modal" style="display: none;">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3 id="modal-evolucao-titulo">Novo Registro de Evolucao</h3>
+        <button class="btn-close" onclick="fecharModal('modal-evolucao')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="form-evolucao" onsubmit="salvarEvolucao(event)">
+          <input type="hidden" id="evolucao-id">
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="evolucao-data">Data da Sessao *</label>
+              <input type="date" id="evolucao-data" required>
+            </div>
+            
+            <div class="form-group">
+              <label for="evolucao-hora">Hora</label>
+              <input type="time" id="evolucao-hora">
+            </div>
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="evolucao-paciente">Paciente *</label>
+              <select id="evolucao-paciente" required>
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+            
+            <div class="form-group">
+              <label for="evolucao-terapeuta">Terapeuta *</label>
+              <select id="evolucao-terapeuta" required>
+                <option value="">Selecione...</option>
+              </select>
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label for="evolucao-objetivos">Objetivos da Sessao</label>
+            <textarea id="evolucao-objetivos" rows="2" placeholder="Descreva os objetivos trabalhados"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="evolucao-atividades">Atividades Realizadas</label>
+            <textarea id="evolucao-atividades" rows="3" placeholder="Descreva as atividades realizadas"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="evolucao-observacoes">Observacoes Clinicas</label>
+            <textarea id="evolucao-observacoes" rows="3" placeholder="Observacoes sobre o comportamento e evolucao do paciente"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="evolucao-resumo">Resumo *</label>
+            <textarea id="evolucao-resumo" rows="2" required placeholder="Resumo breve da sessao"></textarea>
+          </div>
+          
+          <div class="form-group">
+            <label for="evolucao-proxima">Planejamento Proxima Sessao</label>
+            <textarea id="evolucao-proxima" rows="2" placeholder="O que sera trabalhado na proxima sessao"></textarea>
+          </div>
+          
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" onclick="fecharModal('modal-evolucao')">Cancelar</button>
+            <button type="submit" class="btn btn-primary">Salvar</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL VISUALIZAR EVOLUCAO -->
+  <div id="modal-ver-evolucao" class="modal" style="display: none;">
+    <div class="modal-content modal-lg">
+      <div class="modal-header">
+        <h3>Detalhes da Evolucao</h3>
+        <button class="btn-close" onclick="fecharModal('modal-ver-evolucao')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div id="evolucao-detalhes" class="evolucao-view">
+          <!-- Conteudo preenchido via JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICACOES -->
+  <div id="toast-container"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
