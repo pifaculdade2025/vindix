@@ -418,7 +418,10 @@
 
       try {
         const response = await fetch(`http://localhost:8080/consultas?usuario=${codigoUsuario}`);
-        if (!response.ok) throw new Error('Erro no servidor');
+        if (!response.ok) {
+          const erro = await response.json();
+          throw new Error(erro.erro || `Erro HTTP ${response.status}`);
+        }
         const consultas = await response.json();
 
         if (consultas.length === 0) {
@@ -458,8 +461,8 @@
           </table>`;
 
         total.textContent = `${consultas.length} registro${consultas.length !== 1 ? 's' : ''}`;
-
       } catch (err) {
+        alert('Erro ao carregar consultas: ' + err.message);
         conteudo.innerHTML = `
           <div class="estado">
             <div class="estado-icon">⚠️</div>
@@ -477,7 +480,10 @@
         body: JSON.stringify({ codigo: id, usuario: codigoUsuario })
       });
 
-      if (!response.ok) throw new Error('Erro ao gerar PDF');
+      if (!response.ok) {
+        const erro = await response.json();
+        throw new Error(erro.erro || `Erro HTTP ${response.status}`);
+      }
 
       const blob = await response.blob();
       const url = URL.createObjectURL(blob);
