@@ -32,7 +32,7 @@ type
     procedure Parar;
   end;
 
-function ValidarLogin(Usuario, Senha: string): string;
+procedure ValidarLogin(Usuario, Senha: string; AResponseInfo: TIdHTTPResponseInfo);
 var
   JSON: TJSONObject;
 begin
@@ -57,17 +57,20 @@ begin
       JSON.AddPair('mensagem', 'Usuário ou senha incorretos.');
     end;
 
-    Result := JSON.ToString;
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentText := JSON.ToString;
   finally
     JSON.Free;
   end;
 end;
 
-function CarregarConsultas(CodigoUsuario: Integer): String;
+procedure CarregarConsultas(CodigoUsuario: Integer; AResponseInfo: TIdHTTPResponseInfo);
 begin
   if GetConexaoUsuario(CodigoUsuario) = nil then
   begin
-    Result := '{"erro": "Usuario nao encontrado"}';
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
+    AResponseInfo.ContentText := '{"erro": "Usuario nao encontrado"}';
     Exit;
   end;
 
@@ -101,7 +104,9 @@ begin
       qConsultas.Next;
     end;
 
-    Result := JSON.ToString;
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
+    AResponseInfo.ContentText := JSON.ToString;
   finally
     qConsultas.Free;
     JSON.Free;
@@ -160,6 +165,33 @@ begin
   end;
 end;
 
+procedure Imprimir(ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
+var
+  Body: TJSONObject;
+  Stream: TMemoryStream;
+begin
+  ARequestInfo.PostStream.Position := 0;
+  Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
+  Stream := TMemoryStream.Create;
+  try
+    try
+      GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
+      Stream.Position := 0;
+
+      AResponseInfo.ResponseNo  := 200;
+      AResponseInfo.ContentType := 'application/pdf';
+      AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
+      AResponseInfo.ContentStream := Stream;
+      AResponseInfo.FreeContentStream := True;
+    except
+      Stream.Free;
+      raise;
+    end;
+  finally
+    Body.Free;
+  end;
+end;
+
 procedure TServidor.CommandOther(AContext: TIdContext;
   ARequestInfo: TIdHTTPRequestInfo;
   AResponseInfo: TIdHTTPResponseInfo);
@@ -181,40 +213,14 @@ begin
     AResponseInfo.ResponseNo := 200;
     Exit;
   end;
+
   try
     if ARequestInfo.Document = '/login' then
-    begin
-      AResponseInfo.ResponseNo := 200;
-      AResponseInfo.ContentText := ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha']);
-    end
+      ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha'], AResponseInfo)
     else if ARequestInfo.Document = '/consultas' then
-    begin
-      AResponseInfo.ResponseNo := 200;
-      AResponseInfo.ContentType := 'application/json; charset=utf-8';
-      AResponseInfo.ContentText := CarregarConsultas(StrToInt(ARequestInfo.Params.Values['Usuario']));
-    end
+      CarregarConsultas(StrToInt(ARequestInfo.Params.Values['Usuario']), AResponseInfo)
     else if ARequestInfo.Document = '/imprimir' then
-    begin
-      var Body: TJSONObject;
-      ARequestInfo.PostStream.Position := 0;
-      Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
-      var Stream := TMemoryStream.Create;
-      try
-        GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
-        Stream.Position := 0;
-
-        AResponseInfo.ResponseNo  := 200;
-        AResponseInfo.ContentType := 'application/pdf';
-        AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
-        AResponseInfo.ContentStream := Stream;
-        AResponseInfo.FreeContentStream := True;
-      except
-        Stream.Free;
-        AResponseInfo.ResponseNo  := 500;
-        AResponseInfo.ContentText := '{"erro": "Erro ao gerar relatorio"}';
-      end;
-      Body.Free;
-    end
+      Imprimir(ARequestInfo, AResponseInfo)
     else
     begin
       AResponseInfo.ResponseNo := 404;
@@ -223,9 +229,15 @@ begin
   except
     on E: Exception do
     begin
-      AResponseInfo.ResponseNo := 500;
-      AResponseInfo.ContentType := 'application/json; charset=utf-8';
-      AResponseInfo.ContentText := '{"erro": "' + E.ClassName + ': ' + E.Message + '"}';
+      var JSONErro := TJSONObject.Create;
+      try
+        JSONErro.AddPair('erro', E.Message);
+        AResponseInfo.ResponseNo := 500;
+        AResponseInfo.ContentType := 'application/json; charset=utf-8';
+        AResponseInfo.ContentText := JSONErro.ToString;
+      finally
+        JSONErro.Free;
+      end;
     end;
   end;
 end;

@@ -32,7 +32,7 @@ type
     procedure Parar;
   end;
 
-function ValidarLogin(Usuario, Senha: string): string;
+procedure ValidarLogin(Usuario, Senha: string; AResponseInfo: TIdHTTPResponseInfo);
 var
   JSON: TJSONObject;
 begin
@@ -57,17 +57,20 @@ begin
       JSON.AddPair('mensagem', 'Usuário ou senha incorretos.');
     end;
 
-    Result := JSON.ToString;
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentText := JSON.ToString;
   finally
     JSON.Free;
   end;
 end;
 
-function CarregarConsultas(CodigoUsuario: Integer): String;
+procedure CarregarConsultas(CodigoUsuario: Integer; AResponseInfo: TIdHTTPResponseInfo);
 begin
+  AResponseInfo.ResponseNo := 200;
+  AResponseInfo.ContentType := 'application/json; charset=utf-8';
   if GetConexaoUsuario(CodigoUsuario) = nil then
   begin
-    Result := '{"erro": "Usuario nao encontrado"}';
+    AResponseInfo.ContentText := '{"erro": "Usuario nao encontrado"}';
     Exit;
   end;
 
@@ -76,7 +79,7 @@ begin
   try
     qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
     qConsultas.SQL.Text :=
-      ' SELECT '+
+      ' SELEaCT '+
       '    CONSULTAS.ID, '+
       '    PACIENTES.NOME AS PACIENTE, '+
       '    TERAPEUTAS.NOME AS TERAPEUTA, '+
@@ -101,7 +104,7 @@ begin
       qConsultas.Next;
     end;
 
-    Result := JSON.ToString;
+    AResponseInfo.ContentText := JSON.ToString;
   finally
     qConsultas.Free;
     JSON.Free;
@@ -113,34 +116,42 @@ var
   qConsultas: TFDQuery;
 begin
   qDataBDPrincipal.Close;
-  qDataBDPrincipal.SQL.Text := 'SELECT EMPRESAS.CAMINHO_LOGOS FROM EMPRESAS JOIN USUARIOS WHERE ID = :piCodUser';
+  qDataBDPrincipal.SQL.Text := ' SELECT '+
+                               '   EMPRESAS.CAMINHO_LOGOS '+
+                               ' FROM EMPRESAS '+
+                               '   JOIN USUARIOS ON '+
+                               '        (USUARIOS.EMPRESA = EMPRESAS.ID) '+
+                               ' WHERE USUARIOS.ID = :piCodUser';
   qDataBDPrincipal.ParamByName('piCodUser').AsInteger := CodigoUsuario;
   qDataBDPrincipal.Open;
   qConsultas := TFDQuery.Create(nil);
   try
     qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
     qConsultas.SQL.Text :=
-      'SELECT CONSULTAS.ID, PACIENTE.NOME AS NOME_PACIENTE, ' +
-      ' DATEDIFF(YEAR FROM PACIENTE.DT_NASC TO CONSULTAS.DT_HR_SESSAO) - '+
-      ' CASE'+
-      '    WHEN EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
-      '      OR ('+
-      '           EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) = EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
-      '       AND EXTRACT(DAY FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(DAY FROM PACIENTE.DT_NASC)'+
-      '         )'+
-      '    THEN 1'+
-      '    ELSE 0'+
-      ' END as IDADE,'+
-      '       TERAPEUTA.NOME AS NOME_PROF, E.DESCRICAO AS ESPECIALIDADE, ' +
-      '       PACIENTE.DIAGNOSTICO, ' +
-      '       EXTRACT(YEAR FROM CONSULTAS.DT_HR_SESSAO) AS ANO, ' +
-      '       CONSULTAS.RESUMO_SESSAO ' +
-      'FROM CONSULTAS ' +
-      '  JOIN CADASTROS PACIENTE ON PACIENTE.ID = CONSULTAS.ID_PACIENTE ' +
-      '  JOIN CADASTROS TERAPEUTA  ON TERAPEUTA.ID  = CONSULTAS.ID_TERAPEUTA ' +
-      '  JOIN ESPECIALIDADES E ON E.ID = CONSULTAS.ID_ESPECIALIDADE ' +
+      ' SELECT '+
+      '    CONSULTAS.ID, '+
+      '    PACIENTE.NOME NOME_PACIENTE, ' +
+      '    DATEDIFF(YEAR FROM PACIENTE.DT_NASC TO CONSULTAS.DT_HR_SESSAO) - '+
+      '    CASE'+
+      '       WHEN EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
+      '         OR ('+
+      '              EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) = EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
+      '              AND EXTRACT(DAY FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(DAY FROM PACIENTE.DT_NASC)'+
+      '            )'+
+      '       THEN 1'+
+      '       ELSE 0'+
+      '    END as IDADE,'+
+      '    TERAPEUTA.NOME AS NOME_PROF, '+
+      '    ESPECIALIDADES.DESCRICAO ESPECIALIDADE, ' +
+      '    PACIENTE.DIAGNOSTICO, ' +
+      '    EXTRACT(YEAR FROM CONSULTAS.DT_HR_SESSAO) ANO, ' +
+      '    CONSULTAS.RESUMO_SESSAO ' +
+      ' FROM CONSULTAS ' +
+      '    JOIN CADASTROS PACIENTE ON PACIENTE.ID = CONSULTAS.ID_PACIENTE ' +
+      '    JOIN CADASTROS TERAPEUTA  ON TERAPEUTA.ID  = CONSULTAS.ID_TERAPEUTA ' +
+      '    JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE ' +
       'WHERE CONSULTAS.ID = :pCod';
-    qConsultas.ParamByName('pCod').AsInteger := Codigo+20;
+    qConsultas.ParamByName('pCod').AsInteger := Codigo;
     qConsultas.Open;
 
     if qConsultas.IsEmpty then
@@ -149,6 +160,36 @@ begin
     GerarRelatorioEvolucaoPDF(qConsultas, Stream, qDataBDPrincipal.FieldByName('CAMINHO_LOGOS').AsString);
   finally
     qConsultas.Free;
+  end;
+end;
+
+procedure Imprimir(ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
+var
+  Body: TJSONObject;
+  Stream: TMemoryStream;
+begin
+  ARequestInfo.PostStream.Position := 0;
+  Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
+  Stream := TMemoryStream.Create;
+  try
+    try
+      GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
+      Stream.Position := 0;
+
+      AResponseInfo.ResponseNo  := 200;
+      AResponseInfo.ContentType := 'application/pdf';
+      AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
+      AResponseInfo.ContentStream := Stream;
+      AResponseInfo.FreeContentStream := True;
+    except
+      on E: Exception do
+      begin
+        Stream.Free;
+        raise Exception.Create(E.ClassName + ': ' + E.Message);
+      end;
+    end;
+  finally
+    Body.Free;
   end;
 end;
 
@@ -173,40 +214,14 @@ begin
     AResponseInfo.ResponseNo := 200;
     Exit;
   end;
+
   try
     if ARequestInfo.Document = '/login' then
-    begin
-      AResponseInfo.ResponseNo := 200;
-      AResponseInfo.ContentText := ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha']);
-    end
+      ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha'], AResponseInfo)
     else if ARequestInfo.Document = '/consultas' then
-    begin
-      AResponseInfo.ResponseNo := 200;
-      AResponseInfo.ContentType := 'application/json; charset=utf-8';
-      AResponseInfo.ContentText := CarregarConsultas(StrToInt(ARequestInfo.Params.Values['Usuario']));
-    end
+      CarregarConsultas(StrToInt(ARequestInfo.Params.Values['Usuario']), AResponseInfo)
     else if ARequestInfo.Document = '/imprimir' then
-    begin
-      var Body: TJSONObject;
-      ARequestInfo.PostStream.Position := 0;
-      Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
-      var Stream := TMemoryStream.Create;
-      try
-        GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
-        Stream.Position := 0;
-
-        AResponseInfo.ResponseNo  := 200;
-        AResponseInfo.ContentType := 'application/pdf';
-        AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
-        AResponseInfo.ContentStream := Stream;
-        AResponseInfo.FreeContentStream := True;
-      except
-        Stream.Free;
-        AResponseInfo.ResponseNo  := 500;
-        AResponseInfo.ContentText := '{"erro": "Erro ao gerar relatorio"}';
-      end;
-      Body.Free;
-    end
+      Imprimir(ARequestInfo, AResponseInfo)
     else
     begin
       AResponseInfo.ResponseNo := 404;
@@ -215,9 +230,15 @@ begin
   except
     on E: Exception do
     begin
-      AResponseInfo.ResponseNo := 500;
-      AResponseInfo.ContentType := 'application/json; charset=utf-8';
-      AResponseInfo.ContentText := '{"erro": "' + E.ClassName + ': ' + E.Message + '"}';
+      var JSONErro := TJSONObject.Create;
+      try
+        JSONErro.AddPair('erro', E.Message);
+        AResponseInfo.ResponseNo := 500;
+        AResponseInfo.ContentType := 'application/json; charset=utf-8';
+        AResponseInfo.ContentText := JSONErro.ToString;
+      finally
+        JSONErro.Free;
+      end;
     end;
   end;
 end;
