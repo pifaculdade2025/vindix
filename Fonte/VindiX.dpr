@@ -173,6 +173,7 @@ begin
   ARequestInfo.PostStream.Position := 0;
   Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
   Stream := TMemoryStream.Create;
+
   try
     try
       GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
