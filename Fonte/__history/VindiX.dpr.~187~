@@ -66,10 +66,10 @@ end;
 
 procedure CarregarConsultas(CodigoUsuario: Integer; AResponseInfo: TIdHTTPResponseInfo);
 begin
-  AResponseInfo.ResponseNo := 200;
-  AResponseInfo.ContentType := 'application/json; charset=utf-8';
   if GetConexaoUsuario(CodigoUsuario) = nil then
   begin
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
     AResponseInfo.ContentText := '{"erro": "Usuario nao encontrado"}';
     Exit;
   end;
@@ -79,7 +79,7 @@ begin
   try
     qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
     qConsultas.SQL.Text :=
-      ' SELEaCT '+
+      ' SELECT '+
       '    CONSULTAS.ID, '+
       '    PACIENTES.NOME AS PACIENTE, '+
       '    TERAPEUTAS.NOME AS TERAPEUTA, '+
@@ -104,10 +104,39 @@ begin
       qConsultas.Next;
     end;
 
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
     AResponseInfo.ContentText := JSON.ToString;
   finally
     qConsultas.Free;
     JSON.Free;
+  end;
+end;
+
+procedure Imprimir(ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
+var
+  Body: TJSONObject;
+  Stream: TMemoryStream;
+begin
+  ARequestInfo.PostStream.Position := 0;
+  Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
+  Stream := TMemoryStream.Create;
+  try
+    try
+      GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
+      Stream.Position := 0;
+
+      AResponseInfo.ResponseNo  := 200;
+      AResponseInfo.ContentType := 'application/pdf';
+      AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
+      AResponseInfo.ContentStream := Stream;
+      AResponseInfo.FreeContentStream := True;
+    except
+      Stream.Free;
+      raise;
+    end;
+  finally
+    Body.Free;
   end;
 end;
 
@@ -160,36 +189,6 @@ begin
     GerarRelatorioEvolucaoPDF(qConsultas, Stream, qDataBDPrincipal.FieldByName('CAMINHO_LOGOS').AsString);
   finally
     qConsultas.Free;
-  end;
-end;
-
-procedure Imprimir(ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
-var
-  Body: TJSONObject;
-  Stream: TMemoryStream;
-begin
-  ARequestInfo.PostStream.Position := 0;
-  Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
-  Stream := TMemoryStream.Create;
-  try
-    try
-      GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
-      Stream.Position := 0;
-
-      AResponseInfo.ResponseNo  := 200;
-      AResponseInfo.ContentType := 'application/pdf';
-      AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
-      AResponseInfo.ContentStream := Stream;
-      AResponseInfo.FreeContentStream := True;
-    except
-      on E: Exception do
-      begin
-        Stream.Free;
-        raise Exception.Create(E.ClassName + ': ' + E.Message);
-      end;
-    end;
-  finally
-    Body.Free;
   end;
 end;
 

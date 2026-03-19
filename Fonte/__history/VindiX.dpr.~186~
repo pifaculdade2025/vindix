@@ -66,10 +66,10 @@ end;
 
 procedure CarregarConsultas(CodigoUsuario: Integer; AResponseInfo: TIdHTTPResponseInfo);
 begin
-  AResponseInfo.ResponseNo := 200;
-  AResponseInfo.ContentType := 'application/json; charset=utf-8';
   if GetConexaoUsuario(CodigoUsuario) = nil then
   begin
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
     AResponseInfo.ContentText := '{"erro": "Usuario nao encontrado"}';
     Exit;
   end;
@@ -104,6 +104,8 @@ begin
       qConsultas.Next;
     end;
 
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
     AResponseInfo.ContentText := JSON.ToString;
   finally
     qConsultas.Free;
@@ -129,7 +131,7 @@ begin
     qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
     qConsultas.SQL.Text :=
       ' SELECT '+
-      '    CONSULTlAS.ID, '+
+      '    CONSULTAS.ID, '+
       '    PACIENTE.NOME NOME_PACIENTE, ' +
       '    DATEDIFF(YEAR FROM PACIENTE.DT_NASC TO CONSULTAS.DT_HR_SESSAO) - '+
       '    CASE'+
@@ -172,7 +174,7 @@ begin
   Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
   Stream := TMemoryStream.Create;
   try
-//    try
+    try
       GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
       Stream.Position := 0;
 
@@ -181,13 +183,10 @@ begin
       AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
       AResponseInfo.ContentStream := Stream;
       AResponseInfo.FreeContentStream := True;
-//    except
-//      on E: Exception do
-//      begin
-//        Stream.Free;
-//        raise Exception.Create(E.ClassName + ': ' + E.Message);
-//      end;
-//    end;
+    except
+      Stream.Free;
+      raise;
+    end;
   finally
     Body.Free;
   end;
