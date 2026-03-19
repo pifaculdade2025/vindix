@@ -66,10 +66,10 @@ end;
 
 procedure CarregarConsultas(CodigoUsuario: Integer; AResponseInfo: TIdHTTPResponseInfo);
 begin
-  AResponseInfo.ResponseNo := 200;
-  AResponseInfo.ContentType := 'application/json; charset=utf-8';
   if GetConexaoUsuario(CodigoUsuario) = nil then
   begin
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
     AResponseInfo.ContentText := '{"erro": "Usuario nao encontrado"}';
     Exit;
   end;
@@ -104,6 +104,8 @@ begin
       qConsultas.Next;
     end;
 
+    AResponseInfo.ResponseNo := 200;
+    AResponseInfo.ContentType := 'application/json; charset=utf-8';
     AResponseInfo.ContentText := JSON.ToString;
   finally
     qConsultas.Free;
@@ -182,11 +184,8 @@ begin
       AResponseInfo.ContentStream := Stream;
       AResponseInfo.FreeContentStream := True;
     except
-      on E: Exception do
-      begin
-        Stream.Free;
-        raise Exception.Create(E.ClassName + ': ' + E.Message);
-      end;
+      Stream.Free;
+      raise;
     end;
   finally
     Body.Free;
