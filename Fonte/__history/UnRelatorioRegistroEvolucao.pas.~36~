@@ -1,0 +1,524 @@
+unit UnRelatorioRegistroEvolucao;
+
+interface
+
+uses
+  Winapi.Windows, Winapi.Messages, System.SysUtils, System.Variants, System.Classes, Vcl.Graphics,
+  Vcl.Controls, Vcl.Forms, Vcl.Dialogs, RLReport, Vcl.Imaging.pngimage,
+  FireDAC.Stan.Intf, FireDAC.Stan.Option, FireDAC.Stan.Param,
+  FireDAC.Stan.Error, FireDAC.DatS, FireDAC.Phys.Intf, FireDAC.DApt.Intf,
+  FireDAC.Stan.Async, FireDAC.DApt, Data.DB, FireDAC.Comp.DataSet,
+  FireDAC.Comp.Client, RLFilters, RLPDFFilter, RLPreview, RLPreviewForm,
+  Vcl.StdCtrls, Vcl.Menus, Datasnap.DBClient;
+
+type
+  TfrmRelatorioRegistroEvolucao = class(TForm)
+    RLReport1: TRLReport;
+    qRelatorio: TFDQuery;
+    dsRelatorio: TDataSource;
+    RLBand1: TRLBand;
+    RLLabel2: TRLLabel;
+    RLDBText3: TRLDBText;
+    RLLabel1: TRLLabel;
+    RLImage2: TRLImage;
+    RLLabel3: TRLLabel;
+    RLLabel4: TRLLabel;
+    RLLabel5: TRLLabel;
+    RLLabel6: TRLLabel;
+    RLLabel7: TRLLabel;
+    RLDBText1: TRLDBText;
+    RLDBText2: TRLDBText;
+    RLDBText4: TRLDBText;
+    RLDBText5: TRLDBText;
+    RLDBText6: TRLDBText;
+    RLLabel8: TRLLabel;
+    RLLabel9: TRLLabel;
+    RLMemo1: TRLMemo;
+    RLMemo2: TRLMemo;
+    cdsResumo: TClientDataSet;
+    dsResumo: TDataSource;
+    cdsResumoid: TIntegerField;
+    RLBand2: TRLBand;
+    RLMemo3: TRLMemo;
+    RLMemo4: TRLMemo;
+    procedure RLBand1BeforePrint(Sender: TObject; var PrintIt: Boolean);
+    function QuebrarTexto(const Texto: string; MaxLinhas, MaxCols: Integer): TStringList;
+    procedure RLBand2BeforePrint(Sender: TObject; var PrintIt: Boolean);
+  private
+    { Private declarations }
+    PosicaoSobra, inpaginas: integer;
+    stlTextos: TStringList;
+    sTextoCompleto: String;
+  public
+    { Public declarations }
+    procedure preparePaginas;
+  end;
+
+var
+  frmRelatorioRegistroEvolucao: TfrmRelatorioRegistroEvolucao;
+
+implementation
+
+uses
+  System.StrUtils;
+
+{$R *.dfm}
+
+procedure TfrmRelatorioRegistroEvolucao.preparePaginas;
+var
+  I: integer;
+begin
+  PosicaoSobra := 0;
+
+  sTextoCompleto := '';
+
+  if self.Tag = 2 then
+  begin
+    qRelatorio.First;
+    while not qRelatorio.Eof do
+    begin
+      sTextoCompleto := sTextoCompleto + ifthen(sTextoCompleto <> '', #13#10#13#10) + 'Sessão: ' +
+                        qRelatorio.FieldByName('DT_HR_SESSAO').AsString + #13#10 +
+                        Trim(qRelatorio.FieldByName('RESUMO_SESSAO').AsString);
+      qRelatorio.Next;
+    end;
+    qRelatorio.First;
+  end
+  else
+    sTextoCompleto := qRelatorio.FieldByName('RESUMO_SESSAO').AsString;
+
+  stlTextos := QuebrarTexto(sTextoCompleto, 61, 66);
+
+  cdsResumo.Close;
+  cdsResumo.CreateDataSet;
+  for i := 1 to inpaginas-1 do
+  begin
+    cdsResumo.Append;
+    cdsResumo.FieldByName('ID').AsInteger := i;
+    cdsResumo.Post;
+  end;
+  cdsResumo.First;
+  cdsResumo.Open;
+end;
+
+function TfrmRelatorioRegistroEvolucao.QuebrarTexto(const Texto: string;
+  MaxLinhas, MaxCols: Integer): TStringList;
+var
+  LinhasEntrada, Paginas: TStringList;
+  Linha, Temp, Palavra: string;
+  i, CountLinhas: Integer;
+begin
+  LinhasEntrada := TStringList.Create;
+  Paginas := TStringList.Create;
+  LinhasEntrada.Text := Texto;
+
+  Linha := '';
+  i := 0;
+  CountLinhas := 0;
+  inpaginas := 1;
+
+  if Texto = '' then
+  begin
+    for I := 1 to 103 do
+    begin
+      if Paginas.Count = 42 then
+      begin
+        if PosicaoSobra = 0 then
+          PosicaoSobra := Paginas.count + 1;
+        Paginas.Add('---QUEBRA_PAGINA---');
+      end;
+      Paginas.Add('');
+    end;
+    inpaginas := 1;
+    Result := Paginas;
+    Exit;
+  end;
+
+  while i < LinhasEntrada.Count do
+  begin
+    Temp := LinhasEntrada[i];
+    Inc(i);
+
+    if Paginas.Count = 42 then
+    begin
+      CountLinhas := 0;
+      if PosicaoSobra = 0 then
+        PosicaoSobra := Paginas.count + 1;
+      Paginas.Add('---QUEBRA_PAGINA---');
+      inc(inpaginas);
+    end;
+
+    if Trim(Temp) = '' then
+    begin
+      Paginas.Add('');
+      Inc(CountLinhas);
+      Continue;
+    end;
+
+    while Temp <> '' do
+    begin
+      Palavra := Copy(Temp, 1, Pos(' ', Temp + ' ') - 1);
+
+      if Length(palavra) > MaxCols then
+      begin
+        if Length(linha) > 0 then
+          palavra := Copy(palavra, 1, maxCols - length(linha) - 1)
+        else
+          palavra := Copy(palavra, 1, maxCols - length(linha));
+      end;
+
+      if (Length(Linha) + Length(Palavra) + 1 <= MaxCols) or ((Linha = '') and (length(palavra) = MaxCols)) then
+      begin
+        if Linha = '' then
+          Linha := Palavra
+        else
+          Linha := Linha + ' ' + Palavra;
+
+        Delete(Temp, 1, Length(Palavra) + 1);
+      end
+      else
+      begin
+        if Paginas.Count = 42 then
+        begin
+          CountLinhas := 0;
+          if PosicaoSobra = 0 then
+            PosicaoSobra := Paginas.count + 1;
+          Paginas.Add('---QUEBRA_PAGINA---');
+          inc(inpaginas);
+        end;
+
+        if CountLinhas = MaxLinhas then
+        begin
+          CountLinhas := 0;
+          Paginas.Add('---QUEBRA_PAGINA---');
+          inc(inpaginas);
+        end;
+
+        Paginas.Add(Linha);
+        Inc(CountLinhas);
+        Linha := '';
+      end;
+    end;
+
+    if Linha <> '' then
+    begin
+      if Paginas.Count = 42 then
+      begin
+        CountLinhas := 0;
+        if PosicaoSobra = 0 then
+          PosicaoSobra := Paginas.count + 1;
+        Paginas.Add('---QUEBRA_PAGINA---');
+        inc(inpaginas);
+      end;
+
+      if CountLinhas = MaxLinhas then
+      begin
+        CountLinhas := 0;
+        Paginas.Add('---QUEBRA_PAGINA---');
+        inc(inpaginas);
+      end;
+
+      Paginas.Add(Linha);
+      Inc(CountLinhas);
+      Linha := '';
+    end;
+  end;
+
+  Result := Paginas;
+end;
+
+procedure TfrmRelatorioRegistroEvolucao.RLBand1BeforePrint(Sender: TObject;
+  var PrintIt: Boolean);
+var
+  I: Integer;
+  linha: TRLDraw;
+begin
+  RLDBText1.Left := RLLabel3.left + RLLabel3.Width;
+  RLDBText1.Width := RLDBText1.Width + 20;
+  RLDBText4.Left := RLLabel5.Left + RLLabel5.Width;
+
+  for i := 0 to stlTextos.Count - 1 do
+  begin
+    if (stlTextos[i] <> '---QUEBRA_PAGINA---') then
+      RLMemo1.Lines.Add(' '+stlTextos[i])
+    else
+       break;
+  end;
+
+  RLBand1.AutoExpand := false;
+  RLMemo2.Lines.Clear;
+  for I := 0 to Trunc(RLMemo1.Height / 22) - 1 do
+  begin
+    RLMemo2.Lines.Add('a');
+    if I = (Trunc(RLMemo1.Height / 22) - 1) then
+      break;
+
+    linha := TRLDraw.Create(RLBand1);
+    linha.Parent := RLBand1;
+    linha.Height := 1;
+    linha.DrawKind := dkLine;
+    linha.top := RLMemo2.Top-3;
+    linha.Width := RLMemo1.Width;
+    linha.Left := RLMemo1.Left;
+
+    linha := TRLDraw.Create(RLBand1);
+    linha.Parent := RLBand1;
+    linha.Height := 1;
+    linha.DrawKind := dkLine;
+    linha.top := RLMemo2.Top-3;
+    linha.Width := RLMemo2.Width;
+    linha.Left := RLMemo2.Left;
+  end;
+  RLMemo2.AutoSize := false;
+
+  RLMemo2.Lines.Clear;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLDBText3.Top + RLDBText3.Height;
+  linha.Width := RLDBText3.Width;
+  linha.Left := RLDBText3.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLDBText1.Top + RLDBText1.Height- 3;
+  linha.Width := RLDBText1.Width;
+  linha.Left := RLDBText1.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLDBText4.Top + RLDBText4.Height-3;
+  linha.Width := RLDBText4.Width;
+  linha.Left := RLDBText4.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLDBText5.Top + RLDBText5.Height-3;
+  linha.Width := RLDBText5.Width;
+  linha.Left := RLDBText5.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLDBText6.Top + RLDBText6.Height-3;
+  linha.Width := RLDBText6.Width;
+  linha.Left := RLDBText6.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLDBText2.Top + RLDBText2.Height-3;
+  linha.Width := RLDBText2.Width;
+  linha.Left := RLDBText2.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo1.Top-3;
+  linha.Width := RLMemo1.Width;
+  linha.Left := RLMemo1.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo1.Top + RLMemo1.Height - 1 -3;
+  linha.Width := RLMemo1.Width;
+  linha.Left := RLMemo1.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo1.Top - 3;
+  linha.Height := RLMemo1.Height;
+  linha.Left := RLMemo1.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo1.Top-3;
+  linha.Height := RLMemo1.Height;
+  linha.Left := RLMemo1.Left + RLMemo1.Width;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo2.Top-3;
+  linha.Width := RLMemo2.Width;
+  linha.Left := RLMemo2.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo2.Top + RLMemo2.Height - 1 -3;
+  linha.Width := RLMemo2.Width;
+  linha.Left := RLMemo2.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo2.Top-3;
+  linha.Height := RLMemo2.Height;
+  linha.Left := RLMemo2.Left;
+
+  linha := TRLDraw.Create(RLBand1);
+  linha.Parent := RLBand1;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo2.Top-3;
+  linha.Height := RLMemo2.Height;
+  linha.Left := RLMemo2.Left + RLMemo2.Width - 1;
+end;
+
+procedure TfrmRelatorioRegistroEvolucao.RLBand2BeforePrint(Sender: TObject;
+  var PrintIt: Boolean);
+var
+  I, PosicaoOriginal: integer;
+  linha: TRLDraw;
+begin
+  RLMemo3.Lines.Clear;
+
+  RLBand2.AutoExpand := True;
+  RLMemo4.AutoSize := True;
+
+  PosicaoOriginal := PosicaoSobra;
+
+  for i := PosicaoOriginal to stlTextos.Count - 1 do
+  begin
+    if (i < stlTextos.Count - 1) then
+      PosicaoSobra := i + 1
+    else
+      PosicaoSobra := 0;
+
+    if stlTextos[i] = '---QUEBRA_PAGINA---' then
+      Break;
+
+    RLMemo3.Lines.Add(' '+stlTextos[i]);
+  end;
+
+  RLBand2.AutoExpand := false;
+  RLMemo4.Lines.Clear;
+  for I := 0 to Trunc(RLMemo3.Height / 22) - 1 do
+  begin
+    RLMemo4.Lines.Add('a');
+    if I = (Trunc(RLMemo3.Height / 22) - 1) then
+      break;
+
+    linha := TRLDraw.Create(RLBand2);
+    linha.Parent := RLBand2;
+    linha.Height := 1;
+    linha.DrawKind := dkLine;
+    linha.top := RLMemo4.Top-3;
+    linha.Width := RLMemo3.Width;
+    linha.Left := RLMemo3.Left;
+
+    linha := TRLDraw.Create(RLBand2);
+    linha.Parent := RLBand2;
+    linha.Height := 1;
+    linha.DrawKind := dkLine;
+    linha.top := RLMemo4.Top-3;
+    linha.Width := RLMemo4.Width;
+    linha.Left := RLMemo4.Left;
+  end;
+  RLMemo4.AutoSize := false;
+
+  RLMemo4.Lines.Clear;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo3.Top;
+  linha.Width := RLMemo3.Width;
+  linha.Left := RLMemo3.Left;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo3.Top + RLMemo3.Height - 1;
+  linha.Width := RLMemo3.Width;
+  linha.Left := RLMemo3.Left;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo3.Top;
+  linha.Height := RLMemo3.Height;
+  linha.Left := RLMemo3.Left;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo3.Top;
+  linha.Height := RLMemo3.Height;
+  linha.Left := RLMemo3.Left + RLMemo3.Width;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo4.Top;
+  linha.Width := RLMemo4.Width;
+  linha.Left := RLMemo4.Left;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Height := 1;
+  linha.DrawKind := dkLine;
+  linha.top := RLMemo4.Top + RLMemo4.Height - 1;
+  linha.Width := RLMemo4.Width;
+  linha.Left := RLMemo4.Left;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo4.Top;
+  linha.Height := RLMemo4.Height;
+  linha.Left := RLMemo4.Left;
+
+  linha := TRLDraw.Create(RLBand2);
+  linha.Parent := RLBand2;
+  linha.Width := 1;
+  linha.DrawKind := dkCustom;
+  linha.DrawData.Add('0 1');
+  linha.DrawData.Add('0 0');
+  linha.top := RLMemo4.Top;
+  linha.Height := RLMemo4.Height;
+  linha.Left := RLMemo4.Left + RLMemo4.Width - 1;
+end;
+
+end.
