@@ -11,13 +11,11 @@ uses
   IdCustomHTTPServer,
   IdContext,
   System.JSON,
-  System.Classes,
-  FireDAC.Stan.Param,
-  IdGlobal,
-  FireDAC.DApt,
   UnConexao in 'UnConexao.pas',
-  FireDAC.Comp.Client,
-  UnRelatorioRegistroEvolucaoPDF in 'UnRelatorioRegistroEvolucaoPDF.pas';
+  UnRelatorioRegistroEvolucaoPDF in 'UnRelatorioRegistroEvolucaoPDF.pas',
+  UnFuncoes in 'UnFuncoes.pas',
+  UnAgenda in 'UnAgenda.pas',
+  UnToken in 'UnToken.pas';
 
 type
   TServidor = class
@@ -32,167 +30,6 @@ type
     procedure Parar;
   end;
 
-procedure ValidarLogin(Usuario, Senha: string; AResponseInfo: TIdHTTPResponseInfo);
-var
-  JSON: TJSONObject;
-begin
-  JSON := TJSONObject.Create;
-  try
-    qDataBDPrincipal.Close;
-    qDataBDPrincipal.SQL.Text := 'SELECT ID, NOME FROM USUARIOS WHERE LOGIN = :psLogin AND SENHA = :piSenha';
-    qDataBDPrincipal.ParamByName('psLogin').AsString := Usuario;
-    qDataBDPrincipal.ParamByName('piSenha').AsString := Senha;
-    qDataBDPrincipal.Open;
-
-    if qDataBDPrincipal.RecordCount > 0 then
-    begin
-      JSON.AddPair('sucesso', TJSONBool.Create(True));
-      JSON.AddPair('mensagem', 'Login realizado com sucesso!');
-      JSON.AddPair('nome', qDataBDPrincipal.FieldByName('NOME').AsString);
-      JSON.AddPair('codigo', TJSONNumber.Create(qDataBDPrincipal.FieldByName('ID').AsInteger));
-    end
-    else
-    begin
-      JSON.AddPair('sucesso', TJSONBool.Create(False));
-      JSON.AddPair('mensagem', 'Usuário ou senha incorretos.');
-    end;
-
-    AResponseInfo.ResponseNo := 200;
-    AResponseInfo.ContentText := JSON.ToString;
-  finally
-    JSON.Free;
-  end;
-end;
-
-procedure CarregarConsultas(CodigoUsuario: Integer; AResponseInfo: TIdHTTPResponseInfo);
-begin
-  if GetConexaoUsuario(CodigoUsuario) = nil then
-  begin
-    AResponseInfo.ResponseNo := 200;
-    AResponseInfo.ContentType := 'application/json; charset=utf-8';
-    AResponseInfo.ContentText := '{"erro": "Usuario nao encontrado"}';
-    Exit;
-  end;
-
-  var qConsultas := TFDQuery.Create(nil);
-  var JSON := TJSONArray.Create;
-  try
-    qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
-    qConsultas.SQL.Text :=
-      ' SELECT '+
-      '    CONSULTAS.ID, '+
-      '    PACIENTES.NOME AS PACIENTE, '+
-      '    TERAPEUTAS.NOME AS TERAPEUTA, '+
-      '    CONSULTAS.DT_HR_SESSAO DATA_HORA, '+
-      '    ESPECIALIDADES.DESCRICAO AS ESPECIALIDADE ' +
-      ' FROM CONSULTAS  ' +
-      '    JOIN CADASTROS PACIENTES ON PACIENTES.ID = CONSULTAS.ID_PACIENTE ' +
-      '    JOIN CADASTROS TERAPEUTAS ON TERAPEUTAS.ID = CONSULTAS.ID_TERAPEUTA ' +
-      '    JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE ' +
-      'ORDER BY CONSULTAS.DT_HR_SESSAO DESC';
-    qConsultas.Open;
-
-    while not qConsultas.Eof do
-    begin
-      var Row := TJSONObject.Create;
-      Row.AddPair('id', TJSONNumber.Create(qConsultas.FieldByName('ID').AsInteger));
-      Row.AddPair('paciente', qConsultas.FieldByName('PACIENTE').AsString);
-      Row.AddPair('terapeuta', qConsultas.FieldByName('TERAPEUTA').AsString);
-      Row.AddPair('dataHora', qConsultas.FieldByName('DATA_HORA').AsString);
-      Row.AddPair('especialidade', qConsultas.FieldByName('ESPECIALIDADE').AsString);
-      JSON.Add(Row);
-      qConsultas.Next;
-    end;
-
-    AResponseInfo.ResponseNo := 200;
-    AResponseInfo.ContentType := 'application/json; charset=utf-8';
-    AResponseInfo.ContentText := JSON.ToString;
-  finally
-    qConsultas.Free;
-    JSON.Free;
-  end;
-end;
-
-procedure GerarRelatorio(Codigo: Integer; Stream: TMemoryStream; CodigoUsuario: Integer);
-var
-  qConsultas: TFDQuery;
-begin
-  qDataBDPrincipal.Close;
-  qDataBDPrincipal.SQL.Text := ' SELECT '+
-                               '   EMPRESAS.CAMINHO_LOGOS '+
-                               ' FROM EMPRESAS '+
-                               '   JOIN USUARIOS ON '+
-                               '        (USUARIOS.EMPRESA = EMPRESAS.ID) '+
-                               ' WHERE USUARIOS.ID = :piCodUser';
-  qDataBDPrincipal.ParamByName('piCodUser').AsInteger := CodigoUsuario;
-  qDataBDPrincipal.Open;
-  qConsultas := TFDQuery.Create(nil);
-  try
-    qConsultas.Connection := GetConexaoUsuario(CodigoUsuario);
-    qConsultas.SQL.Text :=
-      ' SELECT '+
-      '    CONSULTAS.ID, '+
-      '    PACIENTE.NOME NOME_PACIENTE, ' +
-      '    DATEDIFF(YEAR FROM PACIENTE.DT_NASC TO CONSULTAS.DT_HR_SESSAO) - '+
-      '    CASE'+
-      '       WHEN EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
-      '         OR ('+
-      '              EXTRACT(MONTH FROM CONSULTAS.DT_HR_SESSAO) = EXTRACT(MONTH FROM PACIENTE.DT_NASC)'+
-      '              AND EXTRACT(DAY FROM CONSULTAS.DT_HR_SESSAO) < EXTRACT(DAY FROM PACIENTE.DT_NASC)'+
-      '            )'+
-      '       THEN 1'+
-      '       ELSE 0'+
-      '    END as IDADE,'+
-      '    TERAPEUTA.NOME AS NOME_PROF, '+
-      '    ESPECIALIDADES.DESCRICAO ESPECIALIDADE, ' +
-      '    PACIENTE.DIAGNOSTICO, ' +
-      '    EXTRACT(YEAR FROM CONSULTAS.DT_HR_SESSAO) ANO, ' +
-      '    CONSULTAS.RESUMO_SESSAO ' +
-      ' FROM CONSULTAS ' +
-      '    JOIN CADASTROS PACIENTE ON PACIENTE.ID = CONSULTAS.ID_PACIENTE ' +
-      '    JOIN CADASTROS TERAPEUTA  ON TERAPEUTA.ID  = CONSULTAS.ID_TERAPEUTA ' +
-      '    JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE ' +
-      'WHERE CONSULTAS.ID = :pCod';
-    qConsultas.ParamByName('pCod').AsInteger := Codigo;
-    qConsultas.Open;
-
-    if qConsultas.IsEmpty then
-      raise Exception.Create('Registro nao encontrado');
-
-    GerarRelatorioEvolucaoPDF(qConsultas, Stream, qDataBDPrincipal.FieldByName('CAMINHO_LOGOS').AsString);
-  finally
-    qConsultas.Free;
-  end;
-end;
-
-procedure Imprimir(ARequestInfo: TIdHTTPRequestInfo; AResponseInfo: TIdHTTPResponseInfo);
-var
-  Body: TJSONObject;
-  Stream: TMemoryStream;
-begin
-  ARequestInfo.PostStream.Position := 0;
-  Body := TJSONObject.ParseJSONValue(ReadStringFromStream(ARequestInfo.PostStream, -1, IndyTextEncoding_UTF8)) as TJSONObject;
-  Stream := TMemoryStream.Create;
-
-  try
-    try
-      GerarRelatorio(Body.GetValue<Integer>('codigo'), Stream, Body.GetValue<Integer>('usuario'));
-      Stream.Position := 0;
-
-      AResponseInfo.ResponseNo  := 200;
-      AResponseInfo.ContentType := 'application/pdf';
-      AResponseInfo.CustomHeaders.Add('Content-Disposition: inline; filename="relatorio.pdf"');
-      AResponseInfo.ContentStream := Stream;
-      AResponseInfo.FreeContentStream := True;
-    except
-      Stream.Free;
-      raise;
-    end;
-  finally
-    Body.Free;
-  end;
-end;
-
 procedure TServidor.CommandOther(AContext: TIdContext;
   ARequestInfo: TIdHTTPRequestInfo;
   AResponseInfo: TIdHTTPResponseInfo);
@@ -206,7 +43,7 @@ procedure TServidor.CommandGet(AContext: TIdContext;
 begin
   AResponseInfo.CustomHeaders.Add('Access-Control-Allow-Origin: *');
   AResponseInfo.CustomHeaders.Add('Access-Control-Allow-Methods: GET, POST, OPTIONS');
-  AResponseInfo.CustomHeaders.Add('Access-Control-Allow-Headers: Content-Type');
+  AResponseInfo.CustomHeaders.Add('Access-Control-Allow-Headers: Xtoken, Content-Type');
   AResponseInfo.ContentType := 'application/json; charset=utf-8';
 
   if ARequestInfo.CommandType = hcOPTION then
@@ -219,9 +56,15 @@ begin
     if ARequestInfo.Document = '/login' then
       ValidarLogin(ARequestInfo.Params.Values['usuario'], ARequestInfo.Params.Values['senha'], AResponseInfo)
     else if ARequestInfo.Document = '/consultas' then
-      CarregarConsultas(StrToInt(ARequestInfo.Params.Values['Usuario']), AResponseInfo)
+      CarregarConsultas(GetUsuarioLogado(ARequestInfo), AResponseInfo)
     else if ARequestInfo.Document = '/imprimir' then
       Imprimir(ARequestInfo, AResponseInfo)
+    else if ARequestInfo.Document = '/EventoGoogle' then //Adicionar no google agenda
+      ChamarEventoGoogle(ARequestInfo, AResponseInfo)
+    else if ARequestInfo.Document = '/ConectarGoogle' then //Cadastrar email no google agenda
+      ConectarGoogle(ARequestInfo, AResponseInfo)
+    else if ARequestInfo.Document = '/oauth2callback' then //Redirecionamento do google agenda
+      GravarTokenGoogle(ARequestInfo.Params.Values['code'], StrToInt(ARequestInfo.Params.Values['state']), AResponseInfo)
     else
     begin
       AResponseInfo.ResponseNo := 404;
@@ -278,6 +121,9 @@ begin
 
     if Assigned(qUsuarios) then
       qUsuarios.Free;
+
+//    if Assigned(qDataBDPrincipal) then
+//      qDataBDPrincipal.Free;
 
     DesconectarBancoPrincipal;
   except
