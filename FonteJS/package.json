@@ -1,0 +1,27 @@
+{
+  "name": "fontejs",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.3.2",
+    "express-slow-down": "^3.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "lru-cache": "^11.2.7",
+    "node-fetch": "^3.3.2",
+    "node-firebird": "^2.0.2",
+    "toobusy-js": "^0.5.1"
+  }
+}

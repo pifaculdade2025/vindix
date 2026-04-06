@@ -341,9 +341,15 @@
           <div class="page-title">Consultas</div>
           <div class="page-sub">Listagem de atendimentos</div>
         </div>
-        <button class="btn-recarregar" onclick="carregarConsultas()">
-          🔄 Recarregar
-        </button>
+        <div style="display:flex; gap:10px;">
+          <button class="btn-recarregar" onclick="carregarConsultas()">
+            🔄 Recarregar
+          </button>
+
+          <button class="btn-recarregar" onclick="conectarGoogle()">
+            🔗 Conectar Google
+          </button>
+        </div>
       </div>
 
       <div class="tabela-wrap">
@@ -363,7 +369,6 @@
   </div>
 
   <script>
-    let codigoUsuario     = 0;
     let nomeUsuarioLogado = '';
 
     async function fazerLogin() {
@@ -386,7 +391,9 @@
         const data = await response.json();
 
         if (data.sucesso) {
-          codigoUsuario     = data.codigo;
+          if (data.sucesso) {
+            localStorage.setItem("token", data.token);
+          }
           nomeUsuarioLogado = data.nome;
 
           document.getElementById('tela-login').style.display   = 'none';
@@ -408,6 +415,7 @@
     async function carregarConsultas() {
       const conteudo = document.getElementById('tabela-conteudo');
       const total    = document.getElementById('totalRegistros');
+      const token = localStorage.getItem("token");
 
       conteudo.innerHTML = `
         <div class="estado">
@@ -417,7 +425,22 @@
       total.textContent = '—';
 
       try {
-        const response = await fetch(`http://localhost:8080/consultas?usuario=${codigoUsuario}`);
+        console.log("TOKEN:", token);  
+
+        if (!token) {
+          alert("Usuário não autenticado");
+          window.location.href = "login.html";
+          return;
+        }  
+
+        const response = await
+          fetch('http://localhost:8080/consultas', {
+            headers: {
+              Xtoken: token
+            }
+          });
+
+
         if (!response.ok) {
           const erro = await response.json();
           throw new Error(erro.erro || `Erro HTTP ${response.status}`);
@@ -437,13 +460,24 @@
         let rows = '';
         consultas.forEach(c => {
           rows += `
-            <tr onclick="abrirRelatorio(${c.id})">
-              <td class="td-id">#${c.id}</td>
-              <td>${c.paciente}</td>
-              <td>${c.terapeuta}</td>
-              <td class="td-data">${c.dataHora}</td>
-              <td><span class="badge-especialidade">${c.especialidade}</span></td>
-            </tr>`;
+          <tr>
+            <td class="td-id">#${c.id}</td>
+            <td>${c.paciente}</td>
+            <td>${c.terapeuta}</td>
+            <td class="td-data">${c.dataHora}</td>
+            <td><span class="badge-especialidade">${c.especialidade}</span></td>
+            <td style="display:flex; gap:6px;">
+              
+              <button onclick="imprimirConsulta(${c.id})" style="padding:6px 10px; cursor:pointer;">
+                📄
+              </button>
+
+              <button onclick="enviarGoogle(${c.id})" style="padding:6px 10px; cursor:pointer;">
+                📅
+              </button>
+
+            </td>
+          </tr>`;
         });
 
         conteudo.innerHTML = `
@@ -455,6 +489,7 @@
                 <th>Terapeuta</th>
                 <th>Data / Hora</th>
                 <th>Especialidade</th>
+                <th>Ações</th>
               </tr>
             </thead>
             <tbody>${rows}</tbody>
@@ -472,12 +507,44 @@
       }
     }
 
-  async function abrirRelatorio(id) {
+  async function enviarGoogle(idConsulta) {
     try {
+      const token = localStorage.getItem("token");
+      const response = await fetch('http://localhost:8080/EventoGoogle', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Xtoken': token
+        },
+        body: JSON.stringify({
+          Consulta: idConsulta
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.erro || 'Erro ao enviar para Google');
+      }
+
+      alert('Evento criado no Google Agenda! ✅');
+
+    } catch (err) {
+      alert('Erro: ' + err.message);
+    }
+  }  
+
+  async function imprimirConsulta(id) {
+    try {
+      const token = localStorage.getItem("token");
+
       const response = await fetch('http://localhost:8080/imprimir', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ codigo: id, usuario: codigoUsuario })
+        headers: { 
+          'Content-Type': 'application/json', 
+          'Xtoken': token
+        },
+        body: JSON.stringify({ codigo: id})
       });
 
       if (!response.ok) {
@@ -494,8 +561,24 @@
     }
   }
 
+  function conectarGoogle() {    
+    try {
+      const token = localStorage.getItem("token");
+      window.open(
+        `http://localhost:8080/ConectarGoogle`,{
+            headers: {
+              Xtoken: token
+            }
+          });
+
+    } catch (err) {
+      alert('Erro ao conectar com o Google: ' + err.message);
+    }
+  }
+
     function sair() {
-      codigoUsuario     = 0;
+      // codigoUsuario     = 0;
+      localStorage.setItem("token", "");
       nomeUsuarioLogado = '';
       document.getElementById('tela-sistema').style.display = 'none';
       document.getElementById('tela-login').style.display   = 'block';

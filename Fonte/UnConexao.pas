@@ -23,13 +23,14 @@ var
   ConexaoPrincipal: TFDConnection;
   Conexoes: TDictionary<Integer, TFDConnection>;
   qUsuarios: TFDQuery;  
-  qDataBDPrincipal: TFDQuery;
+//  qDataBDPrincipal: TFDQuery;
 
 procedure ConectarBancoPrincipal;
 procedure DesconectarBancoPrincipal;
 procedure CriarDataSetUsuarios;
 function ConectarBancoEmpresa(piCodEmpresa: Integer): TFDConnection;
 function GetConexaoUsuario(CodigoUsuario: Integer): TFDConnection;
+function GetEmpresa(piCodUsuario: Integer): Integer;
 function RecarregarUsuarios(piCodUsuario: integer): boolean;
 
 implementation
@@ -48,8 +49,8 @@ begin
   ConexaoPrincipal.Connected   := True;
   CriarDataSetUsuarios;
 
-  qDataBDPrincipal := TFDQuery.Create(nil);  
-  qDataBDPrincipal.Connection := ConexaoPrincipal;   
+//  qDataBDPrincipal := TFDQuery.Create(nil);
+//  qDataBDPrincipal.Connection := ConexaoPrincipal;
 end;
 
 procedure DesconectarBancoPrincipal;
@@ -94,6 +95,17 @@ begin
     Result := Conexoes[qUsuarios.FieldByName('EMPRESA').AsInteger]
   else
     Result := ConectarBancoEmpresa(qUsuarios.FieldByName('EMPRESA').AsInteger);
+end;
+
+function GetEmpresa(piCodUsuario: Integer): Integer;
+begin
+  if not qUsuarios.Locate('ID', piCodUsuario, []) then
+    if not RecarregarUsuarios(piCodUsuario) then
+    begin
+      result := 0;
+      Exit;
+    end;
+  Result := qUsuarios.FieldByName('EMPRESA').AsInteger;
 end;
 
 function ConectarBancoEmpresa(piCodEmpresa: Integer): TFDConnection;
