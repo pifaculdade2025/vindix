@@ -1,0 +1,39 @@
+Tabela permissões DB principal:
+
+1 - Acesso geral ao sistema todo
+2 - Acesso a todos os usuários da empresa - apenas acesso geral
+
+?0 - Permissão GERAL, acesso a toda a tabela
+
+?1 - Permissão ACESSAR, apenas ver a tela
+?2 - Permissão INSERIR, adicionar novo registro
+?3 - Permissão ALTERAR, alterar um registro 
+?4 - Permissão EXCLUIR, deleta um item 
+
+?? - Permissões específicas
+
+1? - Permissões da tabela CADASTROS
+2? - Permissões da tabela CONSULTAS
+3? - Permissões da tabela ESPECIALIDADES
+
+
+OBS: 
+Permissões não se anulam, 
+se o usuário tiver a permissão de inserir em uma tabela e não tiver o acessar não vai conseguir acessar a tela para inserir.
+
+Únicas permissões que anulam outras:
+1 - Geral, se tiver essa não precisa de nenhuma outra 
+?0 - Geral na tabela, não precisa das outras permissões naquela tabela
+
+Permissões específicas:
+?? - Primeiro digito tabela - Segundo digito permissão
+Ex:
+15 - Permissão da tabela cadastro, tipo qualquer para identificação
+
+
+
+
+
+
+
+

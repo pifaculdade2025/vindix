@@ -32,8 +32,20 @@ export async function validarLogin(req, res){
             return res.status(401).json({ erro: 'Usuário ou senha inválidos' });
         }
 
-        const token = gerarToken(result[0].id, result[0].token_version);
-        return res.json({ token, nome: result[0].nome });
+        const resultPermissoes = await executeQueryEmpresa(
+            `SELECT ID_PERMISSAO FROM PERMISSOES_USUARIOS WHERE ID_USUARIO = ?`,
+            [result[0].id],
+            result[0].id
+        );
+
+        if (resultPermissoes.length === 0) {
+            return res.status(403).json({ erro: 'Usuário não tem permissões configuradas' });
+        }
+
+        const permissoes = resultPermissoes.map(r => r.id_permissao);
+
+        const token = gerarToken(result[0].id, result[0].token_version, permissoes);
+        return res.json({ token, nome: result[0].nome, permissoes });
 
     } catch(err) {
         return handleError(res, err, 'validarLogin');

@@ -16,11 +16,12 @@ export function limparCacheUsuario(usuarioId) {
     cacheTokenVersion.delete(usuarioId);
 }
 
-export function gerarToken(usuarioId, tokenVersion) {
+export function gerarToken(usuarioId, tokenVersion, permissoes = []) {
     return jwt.sign(
         {
             id: usuarioId,
-            v: tokenVersion 
+            v: tokenVersion,
+            p: permissoes
         },
         SECRET,
         {
@@ -60,6 +61,7 @@ export async function autenticarToken(req, res, next) {
             return res.status(401).json({ erro: 'Sessão encerrada' });
         }  
         req.usuario = decoded.id;
+        req.permissoes = cached.permissoes;
         return next();
     }
 
@@ -75,6 +77,7 @@ export async function autenticarToken(req, res, next) {
 
         cacheTokenVersion.set(decoded.id, {
             version: result[0].token_version,
+            permissoes: Array.isArray(decoded.p) ? decoded.p : [],
             expira: Date.now() + CACHE_TTL_MS
         });
 
@@ -83,9 +86,24 @@ export async function autenticarToken(req, res, next) {
         }
 
         req.usuario = parseInt(decoded.id, 10);
+        req.permissoes = Array.isArray(decoded.p) ? decoded.p : [];
         next();
 
     } catch (err) {
         return funcoes.handleError(res, err, 'autenticarToken');
     }
+}
+
+export function exigirPermissao(...idsPermissao) {
+    return (req, res, next) => {
+        const permissoesUsuario = req.permissoes ?? [];
+        
+        const temAcesso = idsPermissao.some(id => permissoesUsuario.includes(id));
+        
+        if (!temAcesso) {
+            return res.status(403).json({ erro: 'Sem permissão' });
+        }
+        
+        next();
+    };
 }
