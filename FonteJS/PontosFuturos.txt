@@ -1,0 +1,3 @@
+- Criptografar RESUMO_SESSAO
+
+- Alterou usuário Troca o token_version dele

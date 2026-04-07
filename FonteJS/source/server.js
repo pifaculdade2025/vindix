@@ -1,13 +1,12 @@
 import express from "express";
 import cors from "cors";
 import rateLimit from 'express-rate-limit';
-import { autenticarToken } from "./auth.js"
+import { autenticarToken, exigirPermissao } from "./auth.js"
 import * as funcoes from "./funcoes.js";
 import * as agenda from './agenda.js';
 import helmet from 'helmet';
 import { tooBusyCheck } from "./too-busy.js";
 import slowDown from 'express-slow-down';
-import { executeQueryDBPrincipal } from './conexaoBD.js';
 
 if (!process.env.ALLOWED_ORIGINS) {
     throw new Error("ALLOWED_ORIGINS não definido");
@@ -56,39 +55,39 @@ app.get('/health', (req, res) => {
 app.post('/login', loginSlow, loginLimiter, funcoes.validarLogin);
 
 //usuarios
-app.get('/usuarios', autenticarToken, funcoes.carregarUsuarios);
-app.post('/usuarios', autenticarToken, funcoes.cadastrarUsuario);
-app.put('/usuarios/senha', autenticarToken, funcoes.alterarSenha);
+app.get('/usuarios', autenticarToken, exigirPermissao(1, 2), funcoes.carregarUsuarios);
+app.post('/usuarios', autenticarToken, exigirPermissao(1, 2), funcoes.cadastrarUsuario);
+app.put('/usuarios/senha', autenticarToken, exigirPermissao(1, 2), funcoes.alterarSenha);
 
 //consultas
-app.get('/consultas', autenticarToken, funcoes.carregarConsultas);
+app.get('/consultas', autenticarToken, exigirPermissao(1, 20, 21), funcoes.carregarConsultas);
 
 //Google Agenda
-app.get('/google/conectar', autenticarToken, agenda.conectarGoogle);
-app.get('/google/status', autenticarToken, agenda.statusGoogle);
+app.get('/google/conectar', autenticarToken, exigirPermissao(1), agenda.conectarGoogle);
+app.get('/google/status', autenticarToken, exigirPermissao(1), agenda.statusGoogle);
 app.get('/google/callback', agenda.callbackGoogle); 
-app.post('/google/evento',  autenticarToken, agenda.criarEventoGoogle);
-app.delete('/google/conectar', autenticarToken, agenda.desconectarGoogle);
+app.post('/google/evento',  autenticarToken, exigirPermissao(1), agenda.criarEventoGoogle);
+app.delete('/google/conectar', autenticarToken, exigirPermissao(1), agenda.desconectarGoogle);
 
-
-
-app.get('/test/timeout', autenticarToken, async (req, res) => {
-    try {
-        // Firebird não tem SLEEP nativo, mas esse EXECUTE BLOCK
-        // fica em loop ocupado por ~20 segundos — vai disparar o timeout de 15s
-        await executeQueryDBPrincipal(`
-            EXECUTE BLOCK AS
-                DECLARE i INT = 0;
-                DECLARE s VARCHAR(100) = '';
-            BEGIN
-                WHILE (i < 50000000) DO BEGIN
-                    i = i + 1;
-                    s = CAST(i AS VARCHAR(100));
-                END
-            END
-        `, []);
-        res.json({ sucesso: true });
-    } catch (err) {
-        res.status(500).json({ erro: err.message });
-    }
-});
+/*
+Permissões:
+ID|TABELA        |TIPO   |
+--+--------------+-------+
+ 1|GERAL         |GERAL  |
+ 2|USUARIOS      |GERAL  |
+10|CADASTRO      |GERAL  |
+11|CADASTRO      |ACESSAR|
+12|CADASTRO      |INSERIR|
+13|CADASTRO      |ALTERAR|
+14|CADASTRO      |EXCLUIR|
+20|CONSULTAS     |GERAL  |
+21|CONSULTAS     |ACESSAR|
+22|CONSULTAS     |INSERIR|
+23|CONSULTAS     |ALTERAR|
+24|CONSULTAS     |EXCLUIR|
+30|ESPECIALIDADES|GERAL  |
+31|ESPECIALIDADES|ACESSAR|
+32|ESPECIALIDADES|INSERIR|
+33|ESPECIALIDADES|ALTERAR|
+34|ESPECIALIDADES|EXCLUIR|
+*/
