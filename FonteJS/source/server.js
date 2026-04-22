@@ -41,14 +41,20 @@ app.use(cors({
 }));
 app.use(helmet());
 app.use(tooBusyCheck);
-const globalLimiter = rateLimit({ windowMs: 60000, max: 300 });
+const globalLimiter = rateLimit({ windowMs: 60000, max: 60 });
 app.use(globalLimiter);
 
-app.listen(8080);
+app.listen(8080, (err) => {
+  if (err) { 
+    console.error('Falha ao iniciar servidor', err); 
+    process.exit(1); 
+  }
+  console.log('Servidor rodando na porta 8080');
+});
 
 //ver se o servidor está vivo
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', uptime: process.uptime() });
+  res.json({ status: 'ok' });
 });
 
 //login
@@ -57,37 +63,56 @@ app.post('/login', loginSlow, loginLimiter, funcoes.validarLogin);
 //usuarios
 app.get('/usuarios', autenticarToken, exigirPermissao(1, 2), funcoes.carregarUsuarios);
 app.post('/usuarios', autenticarToken, exigirPermissao(1, 2), funcoes.cadastrarUsuario);
-app.put('/usuarios/senha', autenticarToken, exigirPermissao(1, 2), funcoes.alterarSenha);
+  //senha
+  app.put('/usuarios/senha', autenticarToken, exigirPermissao(1, 2), funcoes.alterarSenha);
+  //Nome
+  app.put('/usuarios/nome', autenticarToken, exigirPermissao(1, 2), funcoes.alterarNome);
+  //permissoes do usuario
+  app.get('/usuarios/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.carregarPermissoesUsuario)
+  app.post('/usuarios/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.adicionarPermissoes);
+  app.delete('/usuarios/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.excluirPermissao);
+
+//permissoes
+app.get('/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.carregarPermissoes);
+
+//cadastros
+app.get('/cadastros', autenticarToken, exigirPermissao(1, 10, 11), funcoes.carregarCadastros);
 
 //consultas
 app.get('/consultas', autenticarToken, exigirPermissao(1, 20, 21), funcoes.carregarConsultas);
+
+//Especialidades
+app.get('/especialidade', autenticarToken, exigirPermissao(1, 30, 31), funcoes.carregarEspecialidades)
 
 //Google Agenda
 app.get('/google/conectar', autenticarToken, exigirPermissao(1), agenda.conectarGoogle);
 app.get('/google/status', autenticarToken, exigirPermissao(1), agenda.statusGoogle);
 app.get('/google/callback', agenda.callbackGoogle); 
-app.post('/google/evento',  autenticarToken, exigirPermissao(1), agenda.criarEventoGoogle);
+app.post('/google/evento',  autenticarToken, exigirPermissao(1, 26), agenda.criarEventoGoogle);
 app.delete('/google/conectar', autenticarToken, exigirPermissao(1), agenda.desconectarGoogle);
 
 /*
 Permissões:
-ID|TABELA        |TIPO   |
---+--------------+-------+
- 1|GERAL         |GERAL  |
- 2|USUARIOS      |GERAL  |
-10|CADASTRO      |GERAL  |
-11|CADASTRO      |ACESSAR|
-12|CADASTRO      |INSERIR|
-13|CADASTRO      |ALTERAR|
-14|CADASTRO      |EXCLUIR|
-20|CONSULTAS     |GERAL  |
-21|CONSULTAS     |ACESSAR|
-22|CONSULTAS     |INSERIR|
-23|CONSULTAS     |ALTERAR|
-24|CONSULTAS     |EXCLUIR|
-30|ESPECIALIDADES|GERAL  |
-31|ESPECIALIDADES|ACESSAR|
-32|ESPECIALIDADES|INSERIR|
-33|ESPECIALIDADES|ALTERAR|
-34|ESPECIALIDADES|EXCLUIR|
+ID|TABELA        |TIPO     |
+--+--------------+---------+
+ 1|GERAL         |GERAL    |
+ 2|USUARIOS      |GERAL    |
+10|CADASTRO      |GERAL    |
+11|CADASTRO      |ACESSAR  |
+12|CADASTRO      |INSERIR  |
+13|CADASTRO      |ALTERAR  |
+14|CADASTRO      |EXCLUIR  |
+15|CADASTRO      |HISTORICO|
+20|CONSULTAS     |GERAL    |
+21|CONSULTAS     |ACESSAR  |
+22|CONSULTAS     |INSERIR  |
+23|CONSULTAS     |ALTERAR  |
+24|CONSULTAS     |EXCLUIR  |
+25|CONSULTAS     |HISTORICO|
+30|ESPECIALIDADES|GERAL    |
+31|ESPECIALIDADES|ACESSAR  |
+32|ESPECIALIDADES|INSERIR  |
+33|ESPECIALIDADES|ALTERAR  |
+34|ESPECIALIDADES|EXCLUIR  |
+35|ESPECIALIDADES|HISTORICO|
 */

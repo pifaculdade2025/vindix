@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VindiX — API Tester</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0c10;
+    --bg2:       #0f1218;
+    --bg3:       #161b24;
+    --border:    #1e2635;
+    --border2:   #2a3347;
+    --accent:    #3b82f6;
+    --accent2:   #60a5fa;
+    --success:   #10b981;
+    --danger:    #ef4444;
+    --warning:   #f59e0b;
+    --text:      #e2e8f0;
+    --text2:     #94a3b8;
+    --text3:     #475569;
+    --mono:      'DM Mono', monospace;
+    --sans:      'Syne', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 2rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 56px;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+
+  .logo {
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 20px;
+    letter-spacing: -0.5px;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .logo span {
+    color: var(--accent);
+  }
+  .logo-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    font-weight: 300;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+  }
+
+  .server-input-wrap {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+  }
+  .server-input-wrap label {
+    color: var(--text3);
+    font-size: 11px;
+  }
+  .server-input-wrap input {
+    background: none;
+    border: none;
+    outline: none;
+    color: var(--accent2);
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 200px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--text3);
+    transition: background 0.3s;
+  }
+  .status-dot.online { background: var(--success); box-shadow: 0 0 6px var(--success); }
+  .status-dot.offline { background: var(--danger); }
+
+  /* LAYOUT */
+  .layout {
+    display: grid;
+    grid-template-columns: 220px 1fr 340px;
+    height: calc(100vh - 56px);
+  }
+
+  /* SIDEBAR */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    overflow-y: auto;
+    padding: 1rem 0;
+  }
+
+  .sidebar-section {
+    padding: 0.25rem 0 0.75rem;
+  }
+  .sidebar-section-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    padding: 0 1rem 0.4rem;
+  }
+
+  .route-btn {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 6px 1rem;
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text2);
+    font-family: var(--mono);
+    font-size: 12px;
+    text-align: left;
+    transition: all 0.15s;
+    border-left: 2px solid transparent;
+  }
+  .route-btn:hover {
+    background: var(--bg3);
+    color: var(--text);
+  }
+  .route-btn.active {
+    background: var(--bg3);
+    color: var(--text);
+    border-left-color: var(--accent);
+  }
+
+  .method-badge {
+    font-size: 9px;
+    font-weight: 500;
+    padding: 2px 5px;
+    border-radius: 3px;
+    letter-spacing: 0.5px;
+    min-width: 36px;
+    text-align: center;
+  }
+  .GET    { background: rgba(16,185,129,0.15); color: #10b981; }
+  .POST   { background: rgba(59,130,246,0.15); color: #60a5fa; }
+  .PUT    { background: rgba(245,158,11,0.15); color: #f59e0b; }
+  .DELETE { background: rgba(239,68,68,0.15);  color: #ef4444; }
+
+  /* MAIN PANEL */
+  .main {
+    overflow-y: auto;
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .panel-title {
+    font-family: var(--sans);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+  .panel-title .method-badge { font-size: 11px; padding: 3px 8px; }
+
+  .panel-url {
+    color: var(--text3);
+    font-size: 12px;
+    margin-top: 2px;
+  }
+
+  .section-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 0.5rem;
+  }
+
+  .field-group {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  .field-row {
+    display: grid;
+    grid-template-columns: 140px 1fr;
+    align-items: center;
+    border-bottom: 1px solid var(--border);
+  }
+  .field-row:last-child { border-bottom: none; }
+
+  .field-label {
+    padding: 8px 12px;
+    color: var(--text3);
+    font-size: 11px;
+    border-right: 1px solid var(--border);
+  }
+
+  .field-row input, .field-row select {
+    background: none;
+    border: none;
+    outline: none;
+    padding: 8px 12px;
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    width: 100%;
+  }
+  .field-row select option { background: var(--bg2); }
+
+  .btn-send {
+    align-self: flex-start;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 20px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .btn-send:hover { background: var(--accent2); transform: translateY(-1px); }
+  .btn-send:active { transform: translateY(0); }
+  .btn-send.loading { opacity: 0.7; pointer-events: none; }
+
+  .btn-secondary {
+    background: var(--bg3);
+    color: var(--text2);
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-family: var(--mono);
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent2); }
+
+  .info-box {
+    background: rgba(59,130,246,0.06);
+    border: 1px solid rgba(59,130,246,0.2);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 12px;
+    color: var(--text2);
+    line-height: 1.7;
+  }
+
+  /* RESPONSE PANEL */
+  .response-panel {
+    border-left: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .response-header {
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+  }
+  .response-header-title {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .response-status {
+    font-size: 12px;
+    font-weight: 500;
+    padding: 2px 8px;
+    border-radius: 4px;
+  }
+  .status-2xx { background: rgba(16,185,129,0.15); color: #10b981; }
+  .status-4xx { background: rgba(245,158,11,0.15);  color: #f59e0b; }
+  .status-5xx { background: rgba(239,68,68,0.15);   color: #ef4444; }
+
+  .response-time {
+    font-size: 11px;
+    color: var(--text3);
+  }
+
+  .response-body {
+    flex: 1;
+    overflow-y: auto;
+    padding: 1rem;
+  }
+
+  .response-pre {
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.7;
+    white-space: pre-wrap;
+    word-break: break-all;
+    color: var(--text2);
+  }
+
+  /* JSON syntax highlight */
+  .json-key    { color: #93c5fd; }
+  .json-string { color: #86efac; }
+  .json-number { color: #fde68a; }
+  .json-bool   { color: #f9a8d4; }
+  .json-null   { color: var(--text3); }
+
+  .response-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    gap: 0.5rem;
+    color: var(--text3);
+    font-size: 12px;
+  }
+  .response-empty svg { opacity: 0.3; }
+
+  /* TOKEN BAR */
+  .token-bar {
+    background: var(--bg2);
+    border-top: 1px solid var(--border);
+    padding: 8px 1rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-shrink: 0;
+  }
+  .token-label { font-size: 10px; color: var(--text3); letter-spacing: 1px; text-transform: uppercase; }
+  .token-value {
+    flex: 1;
+    font-size: 11px;
+    color: var(--accent2);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-style: italic;
+  }
+  .token-clear {
+    font-size: 11px;
+    color: var(--text3);
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: color 0.15s;
+  }
+  .token-clear:hover { color: var(--danger); }
+
+  /* ANIMATIONS */
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  .fade-in { animation: fadeIn 0.2s ease; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin { animation: spin 0.8s linear infinite; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .divider { border: none; border-top: 1px solid var(--border); margin: 0.25rem 0; }
+
+  .row { display: flex; gap: 0.75rem; align-items: center; }
+  .flex-col { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  /* GOOGLE section */
+  .google-status-indicator {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    border-radius: 6px;
+    font-size: 12px;
+    border: 1px solid var(--border);
+    background: var(--bg3);
+  }
+  .google-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--text3); }
+  .google-dot.connected { background: var(--success); box-shadow: 0 0 6px var(--success); }
+
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    Vindi<span>X</span>
+    <div class="logo-sub">API Tester</div>
+  </div>
+  <div class="header-right">
+    <div class="server-input-wrap">
+      <label>BASE URL</label>
+      <input type="text" id="baseUrl" value="http://localhost:8080" placeholder="http://localhost:8080">
+    </div>
+    <div class="status-dot" id="statusDot" title="Status do servidor"></div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <nav class="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Sistema</div>
+      <button class="route-btn active" onclick="selectRoute('health')">
+        <span class="method-badge GET">GET</span> /health
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Auth</div>
+      <button class="route-btn" onclick="selectRoute('login')">
+        <span class="method-badge POST">POST</span> /login
+      </button>
+      <button class="route-btn" onclick="selectRoute('alterarSenha')">
+        <span class="method-badge PUT">PUT</span> /usuarios/senha
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Usuários</div>
+      <button class="route-btn" onclick="selectRoute('listarUsuarios')">
+        <span class="method-badge GET">GET</span> /usuarios
+      </button>
+      <button class="route-btn" onclick="selectRoute('cadastrarUsuario')">
+        <span class="method-badge POST">POST</span> /usuarios
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Consultas</div>
+      <button class="route-btn" onclick="selectRoute('consultas')">
+        <span class="method-badge GET">GET</span> /consultas
+      </button>
+    </div>
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Google Agenda</div>
+      <button class="route-btn" onclick="selectRoute('googleStatus')">
+        <span class="method-badge GET">GET</span> /google/status
+      </button>
+      <button class="route-btn" onclick="selectRoute('googleConectar')">
+        <span class="method-badge GET">GET</span> /google/conectar
+      </button>
+      <button class="route-btn" onclick="selectRoute('googleEvento')">
+        <span class="method-badge POST">POST</span> /google/evento
+      </button>
+      <button class="route-btn" onclick="selectRoute('googleDesconectar')">
+        <span class="method-badge DELETE">DELETE</span> /google/conectar
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN -->
+  <main class="main" id="mainPanel">
+    <!-- preenchido por JS -->
+  </main>
+
+  <!-- RESPONSE -->
+  <aside class="response-panel">
+    <div class="response-header">
+      <span class="response-header-title">Response</span>
+      <div style="display:flex;align-items:center;gap:0.75rem">
+        <span class="response-time" id="responseTime"></span>
+        <span class="response-status" id="responseStatus"></span>
+      </div>
+    </div>
+    <div class="response-body" id="responseBody">
+      <div class="response-empty">
+        <svg width="32" height="32" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+            d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+        </svg>
+        <span>Envie uma requisição</span>
+      </div>
+    </div>
+    <div class="token-bar">
+      <span class="token-label">Token</span>
+      <span class="token-value" id="tokenDisplay">— nenhum —</span>
+      <button class="token-clear" onclick="clearToken()" title="Limpar token">✕</button>
+    </div>
+  </aside>
+
+</div>
+
+<script>
+let currentToken = '';
+let currentRoute = 'health';
+
+// ── ROUTES DEFINITION ──────────────────────────────────────────────────────
+const routes = {
+
+  health: {
+    title: '/health',
+    method: 'GET',
+    path: '/health',
+    description: 'Verifica se o servidor está respondendo. Não requer autenticação.',
+    fields: [],
+    send: async () => request('GET', '/health'),
+  },
+
+  login: {
+    title: '/login',
+    method: 'POST',
+    path: '/login',
+    description: 'Autentica o usuário e retorna o JWT. O token é salvo automaticamente para uso nas próximas requisições.',
+    fields: [
+      { id: 'login_usuario', label: 'login', type: 'text', placeholder: 'seu_login' },
+      { id: 'login_senha',   label: 'senha',  type: 'password', placeholder: '••••••••' },
+    ],
+    send: async () => {
+      const body = {
+        usuario: val('login_usuario'),
+        senha:   val('login_senha'),
+      };
+      const res = await request('POST', '/login', body);
+      if (res?.token) {
+        currentToken = res.token;
+        updateTokenDisplay();
+      }
+      return res;
+    },
+  },
+
+  alterarSenha: {
+    title: '/usuarios/senha',
+    method: 'PUT',
+    path: '/usuarios/senha',
+    description: 'Altera a senha do usuário autenticado. Invalida a sessão atual (token_version incrementa).',
+    auth: true,
+    fields: [
+      { id: 'senha_atual', label: 'senhaAtual', type: 'password', placeholder: 'senha atual' },
+      { id: 'senha_nova',  label: 'novaSenha',  type: 'password', placeholder: 'mínimo 8 caracteres' },
+    ],
+    send: async () => request('PUT', '/usuarios/senha', {
+      senhaAtual: val('senha_atual'),
+      novaSenha:  val('senha_nova'),
+    }),
+  },
+
+  listarUsuarios: {
+    title: '/usuarios',
+    method: 'GET',
+    path: '/usuarios',
+    description: 'Lista todos os usuários da mesma empresa do usuário autenticado.',
+    auth: true,
+    fields: [],
+    send: async () => request('GET', '/usuarios'),
+  },
+
+  cadastrarUsuario: {
+    title: '/usuarios',
+    method: 'POST',
+    path: '/usuarios',
+    description: 'Cadastra um novo usuário na mesma empresa do usuário autenticado.',
+    auth: true,
+    fields: [
+      { id: 'cad_login', label: 'login', type: 'text', placeholder: 'novo_usuario' },
+      { id: 'cad_senha', label: 'senha', type: 'password', placeholder: 'mínimo 8 caracteres' },
+      { id: 'cad_nome',  label: 'nome',  type: 'text', placeholder: 'Nome Completo' },
+    ],
+    send: async () => request('POST', '/usuarios', {
+      login: val('cad_login'),
+      senha: val('cad_senha'),
+      nome:  val('cad_nome'),
+    }),
+  },
+
+  consultas: {
+    title: '/consultas',
+    method: 'GET',
+    path: '/consultas',
+    description: 'Lista as consultas da empresa com paginação. Parâmetros opcionais: pagina e por_pagina (máx 100).',
+    auth: true,
+    fields: [
+      { id: 'cons_pagina',    label: 'pagina',     type: 'number', placeholder: '1' },
+      { id: 'cons_porpagina', label: 'por_pagina', type: 'number', placeholder: '50' },
+    ],
+    send: async () => {
+      const pagina    = val('cons_pagina')    || 1;
+      const porPagina = val('cons_porpagina') || 50;
+      return request('GET', `/consultas?pagina=${pagina}&por_pagina=${porPagina}`);
+    },
+  },
+
+  googleStatus: {
+    title: '/google/status',
+    method: 'GET',
+    path: '/google/status',
+    description: 'Verifica se o Google Calendar está conectado para a empresa do usuário.',
+    auth: true,
+    fields: [],
+    send: async () => request('GET', '/google/status'),
+  },
+
+  googleConectar: {
+    title: '/google/conectar',
+    method: 'GET',
+    path: '/google/conectar',
+    description: 'Inicia o fluxo OAuth2 com o Google. Redireciona para a página de autorização do Google. O token deve ser enviado via query string pois é um redirect de navegador.',
+    auth: true,
+    fields: [],
+    send: async () => {
+      if (!currentToken) return showError('Token necessário. Faça login primeiro.');
+      const base = document.getElementById('baseUrl').value.replace(/\/$/, '');
+      const url = `${base}/google/conectar?token=${encodeURIComponent(currentToken)}`;
+      window.open(url, '_blank', 'width=600,height=700');
+      return { info: 'Janela de autorização do Google aberta.' };
+    },
+  },
+
+  googleEvento: {
+    title: '/google/evento',
+    method: 'POST',
+    path: '/google/evento',
+    description: 'Envia uma consulta para o Google Calendar como evento. Requer o ID da consulta.',
+    auth: true,
+    fields: [
+      { id: 'evento_consulta', label: 'consulta (ID)', type: 'number', placeholder: '1' },
+    ],
+    send: async () => request('POST', '/google/evento', {
+      consulta: parseInt(val('evento_consulta'), 10),
+    }),
+  },
+
+  googleDesconectar: {
+    title: '/google/conectar',
+    method: 'DELETE',
+    path: '/google/conectar',
+    description: 'Revoga o token do Google e remove a conexão. Também zera a flag ENVIADO_GOOGLE nas consultas.',
+    auth: true,
+    fields: [],
+    send: async () => request('DELETE', '/google/conectar'),
+  },
+
+};
+
+// ── HELPERS ────────────────────────────────────────────────────────────────
+function val(id) {
+  const el = document.getElementById(id);
+  return el ? el.value.trim() : '';
+}
+
+function base() {
+  return document.getElementById('baseUrl').value.replace(/\/$/, '');
+}
+
+function updateTokenDisplay() {
+  const display = document.getElementById('tokenDisplay');
+  if (currentToken) {
+    display.textContent = currentToken.substring(0, 48) + '…';
+    display.style.color = 'var(--success)';
+  } else {
+    display.textContent = '— nenhum —';
+    display.style.color = '';
+  }
+}
+
+function clearToken() {
+  currentToken = '';
+  updateTokenDisplay();
+}
+
+// ── REQUEST ────────────────────────────────────────────────────────────────
+async function request(method, path, body = null) {
+  const url = base() + path;
+  const headers = { 'Content-Type': 'application/json' };
+  if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
+
+  const t0 = performance.now();
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+    const elapsed = Math.round(performance.now() - t0);
+    let data;
+    try { data = await res.json(); } catch { data = { raw: await res.text() }; }
+    showResponse(res.status, data, elapsed);
+    return data;
+  } catch (err) {
+    showResponse(0, { erro: err.message }, Math.round(performance.now() - t0));
+    return null;
+  }
+}
+
+function showError(msg) {
+  showResponse(400, { erro: msg }, 0);
+}
+
+// ── RESPONSE RENDER ────────────────────────────────────────────────────────
+function showResponse(status, data, ms) {
+  const statusEl = document.getElementById('responseStatus');
+  const timeEl   = document.getElementById('responseTime');
+  const bodyEl   = document.getElementById('responseBody');
+
+  statusEl.textContent = status ? `${status}` : 'ERR';
+  statusEl.className = 'response-status ' +
+    (status >= 500 || status === 0 ? 'status-5xx' :
+     status >= 400                 ? 'status-4xx' : 'status-2xx');
+
+  timeEl.textContent = ms ? `${ms}ms` : '';
+
+  const json = JSON.stringify(data, null, 2);
+  bodyEl.innerHTML = `<pre class="response-pre fade-in">${highlight(json)}</pre>`;
+}
+
+function highlight(json) {
+  return json
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, match => {
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) return `<span class="json-key">${match}</span>`;
+        return `<span class="json-string">${match}</span>`;
+      }
+      if (/true|false/.test(match)) return `<span class="json-bool">${match}</span>`;
+      if (/null/.test(match))       return `<span class="json-null">${match}</span>`;
+      return `<span class="json-number">${match}</span>`;
+    });
+}
+
+// ── ROUTE RENDER ───────────────────────────────────────────────────────────
+function selectRoute(name) {
+  currentRoute = name;
+  document.querySelectorAll('.route-btn').forEach(b => b.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  renderMain(routes[name]);
+}
+
+function renderMain(route) {
+  const panel = document.getElementById('mainPanel');
+
+  let fieldsHTML = '';
+  if (route.fields && route.fields.length > 0) {
+    const rows = route.fields.map(f => `
+      <div class="field-row">
+        <div class="field-label">${f.label}</div>
+        <input id="${f.id}" type="${f.type}" placeholder="${f.placeholder}" autocomplete="off">
+      </div>
+    `).join('');
+    fieldsHTML = `
+      <div>
+        <div class="section-label">Body / Params</div>
+        <div class="field-group">${rows}</div>
+      </div>
+    `;
+  }
+
+  const authNote = route.auth ? `
+    <div class="info-box">
+      🔒 Requer autenticação — certifique-se de ter feito login e o token estar ativo.
+    </div>
+  ` : '';
+
+  panel.innerHTML = `
+    <div class="flex-col fade-in">
+      <div>
+        <div class="panel-title">
+          <span class="method-badge ${route.method}">${route.method}</span>
+          ${route.title}
+        </div>
+        <div class="panel-url">${base()}${route.path}</div>
+      </div>
+
+      ${authNote}
+
+      <div class="info-box" style="background:var(--bg3);border-color:var(--border);">
+        ${route.description}
+      </div>
+
+      ${fieldsHTML}
+
+      <div class="row">
+        <button class="btn-send" id="sendBtn" onclick="handleSend()">
+          <svg id="sendIcon" width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>
+          </svg>
+          Enviar
+        </button>
+        ${route.method === 'GET' && route.fields.length > 0 ? '' : ''}
+      </div>
+    </div>
+  `;
+}
+
+async function handleSend() {
+  const btn = document.getElementById('sendBtn');
+  const icon = document.getElementById('sendIcon');
+  btn.classList.add('loading');
+  icon.innerHTML = '<circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2" fill="none" stroke-dasharray="31.4" stroke-dashoffset="10"/>';
+  icon.classList.add('spin');
+
+  try {
+    await routes[currentRoute].send();
+  } finally {
+    btn.classList.remove('loading');
+    icon.classList.remove('spin');
+    icon.innerHTML = '<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"/>';
+  }
+}
+
+// ── HEALTH CHECK PERIÓDICO ─────────────────────────────────────────────────
+async function checkHealth() {
+  try {
+    const res = await fetch(base() + '/health', { signal: AbortSignal.timeout(3000) });
+    const dot = document.getElementById('statusDot');
+    dot.className = 'status-dot ' + (res.ok ? 'online' : 'offline');
+  } catch {
+    document.getElementById('statusDot').className = 'status-dot offline';
+  }
+}
+
+// ── INIT ───────────────────────────────────────────────────────────────────
+renderMain(routes['health']);
+checkHealth();
+setInterval(checkHealth, 10000);
+
+document.getElementById('baseUrl').addEventListener('change', () => {
+  renderMain(routes[currentRoute]);
+});
+</script>
+</body>
+</html>
