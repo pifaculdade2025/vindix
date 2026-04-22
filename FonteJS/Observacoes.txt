@@ -9,6 +9,7 @@ Tabela permissões DB principal:
 ?2 - Permissão INSERIR, adicionar novo registro
 ?3 - Permissão ALTERAR, alterar um registro 
 ?4 - Permissão EXCLUIR, deleta um item 
+?5 - Permissão HISTORICO, ver alterações e exclusões da tabela
 
 ?? - Permissões específicas
 
@@ -28,7 +29,7 @@ se o usuário tiver a permissão de inserir em uma tabela e não tiver o acessar
 Permissões específicas:
 ?? - Primeiro digito tabela - Segundo digito permissão
 Ex:
-15 - Permissão da tabela cadastro, tipo qualquer para identificação
+16 - Permissão da tabela cadastro, tipo qualquer para identificação
 
 
 

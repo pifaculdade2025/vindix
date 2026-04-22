@@ -14,7 +14,7 @@ if (!HOST_BD) {
 }
 const PORT_BD  = process.env.PORT_BD;
 if (!PORT_BD) {
-    throw new Error("PORT_BD não definido");
+    throw new Error("PORT_BD não definido"); 
 }
 const USER_BD  = process.env.USER_BD;
 if (!USER_BD) {

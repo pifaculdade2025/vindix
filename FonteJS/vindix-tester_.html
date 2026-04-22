@@ -467,36 +467,6 @@
       <button class="route-btn" onclick="selectRoute('cadastrarUsuario')">
         <span class="method-badge POST">POST</span> /usuarios
       </button>
-      <button class="route-btn" onclick="selectRoute('alterarNome')">
-        <span class="method-badge PUT">PUT</span> /usuarios/nome
-      </button>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-title">Permissões</div>
-      <button class="route-btn" onclick="selectRoute('listarPermissoes')">
-        <span class="method-badge GET">GET</span> /permissoes
-      </button>
-      <button class="route-btn" onclick="selectRoute('permissoesUsuario')">
-        <span class="method-badge GET">GET</span> /usuarios/permissoes
-      </button>
-      <button class="route-btn" onclick="selectRoute('adicionarPermissao')">
-        <span class="method-badge POST">POST</span> /usuarios/permissoes
-      </button>
-      <button class="route-btn" onclick="selectRoute('excluirPermissao')">
-        <span class="method-badge DELETE">DELETE</span> /usuarios/permissoes
-      </button>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-title">Cadastros</div>
-      <button class="route-btn" onclick="selectRoute('cadastros')">
-        <span class="method-badge GET">GET</span> /cadastros
-      </button>
-    </div>
-    <div class="sidebar-section">
-      <div class="sidebar-section-title">Especialidades</div>
-      <button class="route-btn" onclick="selectRoute('especialidades')">
-        <span class="method-badge GET">GET</span> /especialidade
-      </button>
     </div>
     <div class="sidebar-section">
       <div class="sidebar-section-title">Consultas</div>
@@ -596,148 +566,26 @@ const routes = {
     title: '/usuarios/senha',
     method: 'PUT',
     path: '/usuarios/senha',
-    description: 'Altera a senha do usuário autenticado. Invalida a sessão atual (token_version incrementa). O campo updatedAt é preenchido automaticamente ao carregar /usuarios — ou informe manualmente.',
+    description: 'Altera a senha do usuário autenticado. Invalida a sessão atual (token_version incrementa).',
     auth: true,
     fields: [
-      { id: 'senha_atual',    label: 'senhaAtual', type: 'password', placeholder: 'senha atual' },
-      { id: 'senha_nova',     label: 'novaSenha',  type: 'password', placeholder: 'mínimo 8 caracteres' },
-      { id: 'senha_updatedat', label: 'updatedAt', type: 'text',    placeholder: 'ex: 2024-01-15T10:30:00.000Z' },
+      { id: 'senha_atual', label: 'senhaAtual', type: 'password', placeholder: 'senha atual' },
+      { id: 'senha_nova',  label: 'novaSenha',  type: 'password', placeholder: 'mínimo 8 caracteres' },
     ],
     send: async () => request('PUT', '/usuarios/senha', {
       senhaAtual: val('senha_atual'),
       novaSenha:  val('senha_nova'),
-      updatedAt:  val('senha_updatedat'),
     }),
-  },
-
-  alterarNome: {
-    title: '/usuarios/nome',
-    method: 'PUT',
-    path: '/usuarios/nome',
-    description: 'Altera o nome de um usuário da mesma empresa. O campo updatedAt evita conflito de edição simultânea — use o valor retornado pelo GET /usuarios.',
-    auth: true,
-    fields: [
-      { id: 'nome_usuario',   label: 'usuario',   type: 'number', placeholder: 'ID do usuário' },
-      { id: 'nome_novo',      label: 'novonome',  type: 'text',   placeholder: 'Novo nome completo' },
-      { id: 'nome_updatedat', label: 'updatedAt', type: 'text',   placeholder: 'ex: 2024-01-15T10:30:00.000Z' },
-    ],
-    send: async () => request('PUT', '/usuarios/nome', {
-      usuario:   parseInt(val('nome_usuario'), 10),
-      novonome:  val('nome_novo'),
-      updatedAt: val('nome_updatedat'),
-    }),
-  },
-
-  listarPermissoes: {
-    title: '/permissoes',
-    method: 'GET',
-    path: '/permissoes',
-    description: 'Lista todas as permissões disponíveis no sistema.',
-    auth: true,
-    fields: [],
-    send: async () => request('GET', '/permissoes'),
-  },
-
-  permissoesUsuario: {
-    title: '/usuarios/permissoes',
-    method: 'GET',
-    path: '/usuarios/permissoes',
-    description: 'Lista as permissões de um usuário específico. O usuário deve ser da mesma empresa.',
-    auth: true,
-    fields: [
-      { id: 'perm_usuario', label: 'usuario', type: 'number', placeholder: 'ID do usuário' },
-    ],
-    send: async () => {
-      // A API lê req.body.usuario, então enviamos como POST-like via body no GET não funciona em todos os clients.
-      // Fazemos a chamada com body mesmo (axios/fetch suportam body em GET, mas o backend usa req.body)
-      const url = base() + '/usuarios/permissoes';
-      const headers = { 'Content-Type': 'application/json' };
-      if (currentToken) headers['Authorization'] = `Bearer ${currentToken}`;
-      const t0 = performance.now();
-      try {
-        const res = await fetch(url, { method: 'GET', headers, body: JSON.stringify({ usuario: parseInt(val('perm_usuario'), 10) }) });
-        const elapsed = Math.round(performance.now() - t0);
-        let data; try { data = await res.json(); } catch { data = { raw: await res.text() }; }
-        showResponse(res.status, data, elapsed);
-      } catch (err) { showResponse(0, { erro: err.message }, Math.round(performance.now() - t0)); }
-    },
-  },
-
-  adicionarPermissao: {
-    title: '/usuarios/permissoes',
-    method: 'POST',
-    path: '/usuarios/permissoes',
-    description: 'Adiciona uma permissão a um usuário da mesma empresa.',
-    auth: true,
-    fields: [
-      { id: 'addperm_usuario',  label: 'usuario',  type: 'number', placeholder: 'ID do usuário' },
-      { id: 'addperm_permissao', label: 'permissao', type: 'number', placeholder: 'ID da permissão' },
-    ],
-    send: async () => request('POST', '/usuarios/permissoes', {
-      usuario:  parseInt(val('addperm_usuario'), 10),
-      permissao: parseInt(val('addperm_permissao'), 10),
-    }),
-  },
-
-  excluirPermissao: {
-    title: '/usuarios/permissoes',
-    method: 'DELETE',
-    path: '/usuarios/permissoes',
-    description: 'Remove uma permissão pelo ID do registro em PERMISSOES_USUARIOS. Incrementa token_version do usuário afetado, encerrando a sessão dele.',
-    auth: true,
-    fields: [
-      { id: 'delperm_id', label: 'idPermissao', type: 'number', placeholder: 'ID do registro de permissão' },
-    ],
-    send: async () => request('DELETE', '/usuarios/permissoes', {
-      idPermissao: parseInt(val('delperm_id'), 10),
-    }),
-  },
-
-  cadastros: {
-    title: '/cadastros',
-    method: 'GET',
-    path: '/cadastros',
-    description: 'Lista os cadastros da empresa com paginação. Parâmetros opcionais: pagina e por_pagina (máx 100).',
-    auth: true,
-    fields: [
-      { id: 'cads_pagina',    label: 'pagina',     type: 'number', placeholder: '1' },
-      { id: 'cads_porpagina', label: 'por_pagina', type: 'number', placeholder: '50' },
-    ],
-    send: async () => {
-      const pagina    = val('cads_pagina')    || 1;
-      const porPagina = val('cads_porpagina') || 50;
-      return request('GET', `/cadastros?pagina=${pagina}&por_pagina=${porPagina}`);
-    },
-  },
-
-  especialidades: {
-    title: '/especialidade',
-    method: 'GET',
-    path: '/especialidade',
-    description: 'Lista todas as especialidades da empresa do usuário autenticado.',
-    auth: true,
-    fields: [],
-    send: async () => request('GET', '/especialidade'),
   },
 
   listarUsuarios: {
     title: '/usuarios',
     method: 'GET',
     path: '/usuarios',
-    description: 'Lista todos os usuários da mesma empresa do usuário autenticado. Os valores de updated_at são salvos automaticamente — ao selecionar "Alterar Nome" ou "Alterar Senha", o campo updatedAt já virá preenchido com o valor do seu próprio usuário.',
+    description: 'Lista todos os usuários da mesma empresa do usuário autenticado.',
     auth: true,
     fields: [],
-    send: async () => {
-      const res = await request('GET', '/usuarios');
-      // tenta preencher campos updatedAt se existirem no DOM
-      if (Array.isArray(res)) {
-        // guarda no state global para uso posterior
-        window._usuariosCache = res;
-        // tenta preencher campos já abertos
-        tryFillUpdatedAt(res);
-      }
-      return res;
-    },
+    send: async () => request('GET', '/usuarios'),
   },
 
   cadastrarUsuario: {
@@ -828,24 +676,6 @@ const routes = {
 };
 
 // ── HELPERS ────────────────────────────────────────────────────────────────
-function tryFillUpdatedAt(usuarios) {
-  // Tenta preencher os campos updatedAt com base no usuário autenticado (mesmo token)
-  // ou simplesmente o primeiro da lista se não tiver como comparar
-  if (!usuarios || !usuarios.length) return;
-  const nomeEl     = document.getElementById('nome_updatedat');
-  const senhaEl    = document.getElementById('senha_updatedat');
-  const nomeUsuEl  = document.getElementById('nome_usuario');
-  if (nomeEl || senhaEl) {
-    // pega o updated_at do usuário cujo ID está no campo nome_usuario, ou o primeiro
-    const idAlvo = nomeUsuEl ? parseInt(nomeUsuEl.value) : null;
-    const u = (idAlvo && usuarios.find(x => x.id === idAlvo)) || usuarios[0];
-    const ts = u?.updated_at || u?.UPDATED_AT || '';
-    if (nomeEl  && !nomeEl.value  && ts) nomeEl.value  = ts;
-    if (senhaEl && !senhaEl.value && ts) senhaEl.value = ts;
-  }
-}
-
-
 function val(id) {
   const el = document.getElementById(id);
   return el ? el.value.trim() : '';
@@ -992,11 +822,6 @@ function renderMain(route) {
       </div>
     </div>
   `;
-
-  // Auto-preenche updatedAt se tivermos cache de usuários
-  if (window._usuariosCache) {
-    tryFillUpdatedAt(window._usuariosCache);
-  }
 }
 
 async function handleSend() {
