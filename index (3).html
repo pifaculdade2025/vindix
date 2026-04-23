@@ -1,0 +1,867 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090B" />
+  <meta name="description" content="VINDIX — Sistema de Gestão Clínica Multidisciplinar" />
+  <title>VINDIX · Sistema de Gestão Clínica</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body class="theme-dark" data-loading="true">
+
+  <!-- ==========================================
+       SVG SPRITE — ícones reutilizáveis
+  ========================================== -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="i-dashboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="5" rx="1.5"/><rect x="14" y="12" width="7" height="9" rx="1.5"/><rect x="3" y="16" width="7" height="5" rx="1.5"/>
+    </symbol>
+    <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+    </symbol>
+    <symbol id="i-heart-pulse" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20.42 4.58a5.4 5.4 0 0 0-7.65 0L12 5.35l-.77-.77a5.41 5.41 0 0 0-7.65 7.65l.77.77L12 20.66l7.65-7.65.77-.77a5.4 5.4 0 0 0 0-7.66Z"/><path d="M3.22 12H9.5l.5-1 2 4 2-7 1.5 4h5.27"/>
+    </symbol>
+    <symbol id="i-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/>
+    </symbol>
+    <symbol id="i-clipboard" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M8 12h8M8 16h5"/>
+    </symbol>
+    <symbol id="i-chart" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-6"/>
+    </symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M12 5v14M5 12h14"/>
+    </symbol>
+    <symbol id="i-search" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>
+    </symbol>
+    <symbol id="i-edit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/>
+    </symbol>
+    <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+    </symbol>
+    <symbol id="i-printer" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 9V2h12v7M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8" rx="1"/>
+    </symbol>
+    <symbol id="i-google" viewBox="0 0 24 24" fill="currentColor">
+      <path d="M21.35 11.1H12v3.8h5.35c-.23 1.24-1.56 3.63-5.35 3.63-3.22 0-5.85-2.66-5.85-5.95s2.63-5.95 5.85-5.95c1.83 0 3.06.78 3.76 1.45l2.57-2.47C16.96 3.9 14.74 3 12 3 6.98 3 3 7 3 12s3.98 9 9 9c5.19 0 8.63-3.65 8.63-8.78 0-.59-.06-1.04-.14-1.12Z"/>
+    </symbol>
+    <symbol id="i-refresh" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12a9 9 0 1 1-3-6.7L21 8"/><path d="M21 3v5h-5"/>
+    </symbol>
+    <symbol id="i-logout" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/>
+    </symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M3 6h18M3 12h18M3 18h18"/>
+    </symbol>
+    <symbol id="i-close" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 6 6 18M6 6l12 12"/>
+    </symbol>
+    <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 6 9 17l-5-5"/>
+    </symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
+    </symbol>
+    <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>
+    </symbol>
+    <symbol id="i-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M5 12h14M13 5l7 7-7 7"/>
+    </symbol>
+    <symbol id="i-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/>
+    </symbol>
+    <symbol id="i-eye" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/>
+    </symbol>
+    <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/>
+    </symbol>
+  </svg>
+
+  <!-- ==========================================
+       TELA DE LOGIN
+       API: POST /login
+       Body: { usuario, senha }
+       Retorna: { token, nome, permissoes[] }
+  ========================================== -->
+  <section id="screen-login" class="screen screen--active" aria-label="Login">
+    <div class="login">
+      <!-- Coluna hero -->
+      <aside class="login__hero" aria-hidden="true">
+        <div class="login__grid"></div>
+        <div class="login__glow"></div>
+
+        <header class="login__brand">
+          <div class="brand">
+            <span class="brand__mark">
+              <span class="brand__dot"></span>
+            </span>
+            <span class="brand__text">VINDI<em>X</em></span>
+          </div>
+          <span class="brand__tag">Gestão Clínica</span>
+        </header>
+
+        <div class="login__hero-content">
+          <p class="login__eyebrow">Plataforma integrada</p>
+          <h1 class="login__headline">
+            Cuidar é<br>
+            <span class="login__headline-accent">um ato técnico</span><br>
+            e humano.
+          </h1>
+          <p class="login__copy">
+            Registros clínicos, evolução de pacientes e agenda integrada em um só lugar.
+          </p>
+
+          <ul class="login__features">
+            <li><span class="dot"></span>Sete especialidades integradas</li>
+            <li><span class="dot"></span>Relatórios e impressão rápida</li>
+            <li><span class="dot"></span>Sincronização com Google Agenda</li>
+          </ul>
+        </div>
+
+        <footer class="login__hero-footer">
+          <span class="mono">v1.0 · SECURE</span>
+          <span class="mono">© 2026 VINDIX</span>
+        </footer>
+      </aside>
+
+      <!-- Coluna form -->
+      <main class="login__form-wrap">
+        <div class="login__form">
+          <div class="brand brand--compact">
+            <span class="brand__mark"><span class="brand__dot"></span></span>
+            <span class="brand__text">VINDI<em>X</em></span>
+          </div>
+
+          <header class="login__form-head">
+            <h2 class="login__title">
+              Bem-vindo<br>
+              <span class="serif">de volta.</span>
+            </h2>
+            <p class="login__sub">Acesse o sistema com suas credenciais.</p>
+          </header>
+
+          <!--
+            POST /login
+            { usuario: string, senha: string }
+            → 200: { token, nome, permissoes[] }
+            → 400: campos obrigatórios ausentes
+            → 401: credenciais inválidas
+            → 403: sem permissões configuradas
+            → 429: rate limit (10 tentativas / 15min)
+          -->
+          <form id="form-login" class="form" novalidate
+                data-api-method="POST"
+                data-api-url="/login">
+            <div class="field">
+              <label class="field__label" for="input-user">Usuário</label>
+              <div class="field__control">
+                <input class="input" id="input-user" name="usuario" type="text" autocomplete="username" placeholder="seu.usuario" required />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field__label" for="input-pass">Senha</label>
+              <div class="field__control field__control--with-action">
+                <input class="input" id="input-pass" name="senha" type="password" autocomplete="current-password" placeholder="••••••••" required />
+                <button type="button" class="field__toggle" id="btn-toggle-pass" aria-label="Mostrar senha">
+                  <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
+                </button>
+              </div>
+            </div>
+
+            <button class="btn btn--primary btn--block btn--lg" id="btn-login" type="submit">
+              <span class="btn__label">Entrar</span>
+              <svg class="icon btn__icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            </button>
+
+            <p class="login__meta mono">
+              <span>BACKEND</span>
+              <span class="login__dot"></span>
+              <span id="login-backend-url">localhost:8080</span>
+            </p>
+          </form>
+        </div>
+      </main>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       APP SHELL (sistema autenticado)
+       Todas as rotas abaixo exigem header:
+         Authorization: Bearer <token>
+  ========================================== -->
+  <section id="screen-app" class="screen" aria-label="Sistema VINDIX">
+    <div class="app" id="app-shell">
+
+      <!-- SIDEBAR -->
+      <aside class="sidebar" id="sidebar" aria-label="Navegação principal">
+        <header class="sidebar__head">
+          <div class="brand">
+            <span class="brand__mark"><span class="brand__dot"></span></span>
+            <span class="brand__text">VINDI<em>X</em></span>
+          </div>
+          <button class="sidebar__close" id="btn-close-sidebar" aria-label="Fechar menu">
+            <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+          </button>
+        </header>
+
+        <nav class="nav" aria-label="Seções">
+          <div class="nav__group">
+            <p class="nav__group-title">Principal</p>
+            <button class="nav__item" data-page="dashboard">
+              <svg class="icon" aria-hidden="true"><use href="#i-dashboard"></use></svg>
+              <span>Dashboard</span>
+            </button>
+            <!--
+              Consultas: GET /consultas?pagina=1&por_pagina=50
+              Permissões: 1, 20, 21
+            -->
+            <button class="nav__item" data-page="consultas"
+                    data-api-url="/consultas"
+                    data-permissoes="1,20,21">
+              <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+              <span>Consultas</span>
+              <span class="nav__badge" id="nav-badge-consultas">0</span>
+            </button>
+          </div>
+
+          <div class="nav__group">
+            <p class="nav__group-title">Cadastros</p>
+            <!--
+              Cadastros: GET /cadastros?pagina=1&por_pagina=50
+              Permissões: 1, 10, 11
+            -->
+            <button class="nav__item" data-page="pessoas"
+                    data-api-url="/cadastros"
+                    data-permissoes="1,10,11">
+              <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+              <span>Pessoas</span>
+            </button>
+            <!--
+              Especialidades: GET /especialidade
+              Permissões: 1, 30, 31
+            -->
+            <button class="nav__item" data-page="especialidades"
+                    data-api-url="/especialidade"
+                    data-permissoes="1,30,31">
+              <svg class="icon" aria-hidden="true"><use href="#i-heart-pulse"></use></svg>
+              <span>Especialidades</span>
+            </button>
+          </div>
+
+          <div class="nav__group">
+            <p class="nav__group-title">Clínico</p>
+            <button class="nav__item" data-page="evolucao">
+              <svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg>
+              <span>Registros Clínicos</span>
+            </button>
+            <button class="nav__item" data-page="relatorios">
+              <svg class="icon" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+              <span>Relatórios</span>
+            </button>
+          </div>
+        </nav>
+
+        <footer class="sidebar__foot">
+          <div class="user-chip">
+            <div class="avatar" id="user-avatar" aria-hidden="true">?</div>
+            <div class="user-chip__info">
+              <span class="user-chip__name" id="user-name">—</span>
+              <span class="user-chip__role">Operador</span>
+            </div>
+            <!-- Logout: limpar token do localStorage e voltar para tela de login -->
+            <button class="icon-btn icon-btn--danger" id="btn-logout" aria-label="Sair do sistema">
+              <svg class="icon" aria-hidden="true"><use href="#i-logout"></use></svg>
+            </button>
+          </div>
+        </footer>
+      </aside>
+
+      <!-- Backdrop mobile -->
+      <div class="backdrop" id="backdrop-sidebar" aria-hidden="true"></div>
+
+      <!-- MAIN -->
+      <main class="main">
+
+        <!-- TOPBAR -->
+        <header class="topbar">
+          <div class="topbar__left">
+            <button class="icon-btn topbar__menu" id="btn-open-sidebar" aria-label="Abrir menu">
+              <svg class="icon" aria-hidden="true"><use href="#i-menu"></use></svg>
+            </button>
+            <div class="crumbs">
+              <span class="crumbs__root">VINDIX</span>
+              <span class="crumbs__sep">/</span>
+              <span class="crumbs__current" id="page-title">Dashboard</span>
+            </div>
+          </div>
+
+          <div class="topbar__right">
+            <!--
+              Google Agenda:
+              Status:     GET  /google/status        → { conectado: bool }
+              Conectar:   GET  /google/conectar       → redireciona para OAuth Google (abre popup)
+              Desconectar:DELETE /google/conectar
+              Permissão:  1
+            -->
+            <button class="btn btn--ghost btn--sm" id="btn-connect-google"
+                    data-api-status="/google/status"
+                    data-api-connect="/google/conectar"
+                    data-api-disconnect="/google/conectar"
+                    data-permissao="1"
+                    title="Conectar ao Google Agenda">
+              <svg class="icon" aria-hidden="true"><use href="#i-google"></use></svg>
+              <span class="only-desktop">Conectar Google</span>
+            </button>
+            <div class="kbd-hint only-desktop">
+              <kbd>⌘</kbd><kbd>K</kbd>
+            </div>
+          </div>
+        </header>
+
+        <!-- CONTENT -->
+        <div class="content" id="content">
+
+          <!-- ============ DASHBOARD ============
+               Agrega dados de:
+               GET /cadastros         (permissões 1,10,11)
+               GET /consultas         (permissões 1,20,21)
+               GET /especialidade     (permissões 1,30,31)
+               GET /google/status     (permissão 1)
+          ============================================ -->
+          <section class="page" data-page="dashboard">
+            <header class="page-head">
+              <div>
+                <p class="page-head__eyebrow mono">OVERVIEW</p>
+                <h1 class="page-head__title">Dashboard<span class="serif-acc">.</span></h1>
+                <p class="page-head__sub">Visão geral do sistema em tempo real.</p>
+              </div>
+              <div class="page-head__actions">
+                <button class="btn btn--ghost" id="btn-refresh-dash">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                  <span>Atualizar</span>
+                </button>
+              </div>
+            </header>
+
+            <div class="stats">
+              <!-- Conta tipo=Paciente de GET /cadastros -->
+              <article class="stat">
+                <span class="stat__label">Pacientes ativos</span>
+                <span class="stat__value" data-counter id="stat-pacientes">0</span>
+                <span class="stat__delta stat__delta--up">
+                  <svg class="icon" aria-hidden="true"><use href="#i-users"></use></svg>
+                  <span>cadastrados</span>
+                </span>
+              </article>
+              <!-- Conta tipo=Profissional de GET /cadastros -->
+              <article class="stat">
+                <span class="stat__label">Profissionais</span>
+                <span class="stat__value" data-counter id="stat-terapeutas">0</span>
+                <span class="stat__delta">
+                  <svg class="icon" aria-hidden="true"><use href="#i-heart-pulse"></use></svg>
+                  <span>atuantes</span>
+                </span>
+              </article>
+              <!-- Total de GET /consultas -->
+              <article class="stat">
+                <span class="stat__label">Consultas</span>
+                <span class="stat__value" data-counter id="stat-consultas">0</span>
+                <span class="stat__delta">
+                  <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+                  <span>registros</span>
+                </span>
+              </article>
+              <!-- Total de GET /especialidade -->
+              <article class="stat stat--accent">
+                <span class="stat__label">Especialidades</span>
+                <span class="stat__value" data-counter id="stat-especialidades">0</span>
+                <span class="stat__delta">
+                  <svg class="icon" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+                  <span>disponíveis</span>
+                </span>
+              </article>
+            </div>
+
+            <div class="grid-2">
+              <div class="card card--quick">
+                <header class="card__head">
+                  <h3 class="card__title">Ações rápidas</h3>
+                  <p class="card__sub">Atalhos frequentes</p>
+                </header>
+                <div class="quick-grid">
+                  <button class="quick" data-goto="pessoas">
+                    <svg class="icon quick__icon" aria-hidden="true"><use href="#i-users"></use></svg>
+                    <span class="quick__title">Pessoas</span>
+                    <span class="quick__desc">Terapeutas e pacientes</span>
+                    <svg class="icon quick__arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                  <button class="quick" data-goto="consultas">
+                    <svg class="icon quick__icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+                    <span class="quick__title">Consultas</span>
+                    <span class="quick__desc">Ver atendimentos</span>
+                    <svg class="icon quick__arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                  <button class="quick" data-goto="evolucao">
+                    <svg class="icon quick__icon" aria-hidden="true"><use href="#i-chart"></use></svg>
+                    <span class="quick__title">Evolução</span>
+                    <span class="quick__desc">Registros clínicos</span>
+                    <svg class="icon quick__arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                  <button class="quick" data-goto="relatorios">
+                    <svg class="icon quick__icon" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+                    <span class="quick__title">Relatórios</span>
+                    <span class="quick__desc">Gerar documentos</span>
+                    <svg class="icon quick__arrow" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+                  </button>
+                </div>
+              </div>
+
+              <div class="card">
+                <header class="card__head">
+                  <h3 class="card__title">Últimas consultas</h3>
+                  <p class="card__sub">Atendimentos recentes</p>
+                </header>
+                <!-- Alimentado por GET /consultas?pagina=1&por_pagina=5 -->
+                <div class="timeline" id="dash-timeline">
+                  <div class="state state--empty">
+                    <div class="state__icon">
+                      <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+                    </div>
+                    <p>Nenhuma consulta encontrada.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ CONSULTAS ============
+               GET  /consultas?pagina=1&por_pagina=50
+               Permissões: 1, 20, 21
+               Resposta: [{ id, paciente, terapeuta, data_hora, especialidade }]
+
+               Enviar para Google:
+               POST /google/evento
+               Body: { consulta: <id> }
+               Permissões: 1, 26
+          ============================================ -->
+          <section class="page" data-page="consultas"
+                   data-api-list="/consultas"
+                   data-api-google-evento="/google/evento">
+            <header class="page-head">
+              <div>
+                <p class="page-head__eyebrow mono">ATENDIMENTOS</p>
+                <h1 class="page-head__title">Consultas<span class="serif-acc">.</span></h1>
+                <p class="page-head__sub">Listagem de atendimentos carregados do servidor.</p>
+              </div>
+              <div class="page-head__actions">
+                <button class="btn btn--ghost" id="btn-reload-consultas">
+                  <svg class="icon" aria-hidden="true"><use href="#i-refresh"></use></svg>
+                  <span>Recarregar</span>
+                </button>
+              </div>
+            </header>
+
+            <div class="table-wrap">
+              <header class="table-wrap__head">
+                <div class="table-wrap__title">
+                  <span class="mono">CONSULTAS</span>
+                  <span class="table-wrap__count" id="count-consultas">—</span>
+                </div>
+                <div class="table-wrap__tools">
+                  <div class="search">
+                    <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                    <input id="search-consultas" class="search__input" type="search" placeholder="Buscar paciente, terapeuta…" />
+                  </div>
+                </div>
+              </header>
+              <div id="consultas-body">
+                <div class="state state--empty">
+                  <div class="state__icon"><svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg></div>
+                  <h4>Aguardando dados</h4>
+                  <p>Clique em <strong>Recarregar</strong> para buscar as consultas.</p>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- ============ PESSOAS ============
+               Listar: GET /cadastros?pagina=1&por_pagina=50
+               Permissões leitura: 1, 10, 11
+               Resposta: [{ id, nome, telefone, dt_nasc, dt_cadastro, registro_profissional, tipo }]
+               Obs: CPF e diagnóstico NÃO vêm na listagem (dados sensíveis LGPD)
+          ============================================ -->
+          <section class="page" data-page="pessoas"
+                   data-api-list="/cadastros">
+            <header class="page-head">
+              <div>
+                <p class="page-head__eyebrow mono">CADASTRO</p>
+                <h1 class="page-head__title">Pessoas<span class="serif-acc">.</span></h1>
+                <p class="page-head__sub">Terapeutas, pacientes e suas especialidades.</p>
+              </div>
+              <div class="page-head__actions">
+                <button class="btn btn--primary" id="btn-new-pessoa">
+                  <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                  <span>Nova pessoa</span>
+                </button>
+              </div>
+            </header>
+
+            <div class="tabs" role="tablist" aria-label="Filtrar por tipo">
+              <button class="tab tab--active" role="tab" data-filter="all">Todos</button>
+              <button class="tab" role="tab" data-filter="Paciente">Pacientes</button>
+              <button class="tab" role="tab" data-filter="Profissional">Profissionais</button>
+            </div>
+
+            <div class="table-wrap">
+              <header class="table-wrap__head">
+                <div class="table-wrap__title">
+                  <span class="mono">PESSOAS</span>
+                  <span class="table-wrap__count" id="count-pessoas">0 registros</span>
+                </div>
+                <div class="table-wrap__tools">
+                  <div class="search">
+                    <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                    <input id="search-pessoas" class="search__input" type="search" placeholder="Buscar pessoa…" />
+                  </div>
+                </div>
+              </header>
+              <div id="pessoas-body"></div>
+            </div>
+          </section>
+
+          <!-- ============ ESPECIALIDADES ============
+               Listar:  GET /especialidade
+               Permissões: 1, 30, 31
+               Resposta: [{ id, descricao, inativo, id_cor }]
+
+               (Inserir/Editar/Excluir: rotas ainda não implementadas no backend)
+               Futuro: POST   /especialidade          (permissão 32)
+                       PUT    /especialidade/:id      (permissão 33)
+                       DELETE /especialidade/:id      (permissão 34)
+          ============================================ -->
+          <section class="page" data-page="especialidades"
+                   data-api-list="/especialidade">
+            <header class="page-head">
+              <div>
+                <p class="page-head__eyebrow mono">CADASTRO</p>
+                <h1 class="page-head__title">Especialidades<span class="serif-acc">.</span></h1>
+                <p class="page-head__sub">Áreas de atuação disponíveis no sistema.</p>
+              </div>
+            </header>
+
+            <form id="form-nova-esp" class="add-strip">
+              <input class="input" id="input-nova-esp" type="text" placeholder="Nome da nova especialidade…" maxlength="60" />
+              <button class="btn btn--primary" type="submit">
+                <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                <span>Adicionar</span>
+              </button>
+            </form>
+
+            <div class="chips" id="esp-chips"></div>
+          </section>
+
+          <!-- ============ EVOLUÇÃO / REGISTROS CLÍNICOS ============
+               (Rotas ainda não implementadas no backend)
+               Futuro:
+               Listar:   GET  /evolucao?pagina=1&por_pagina=50   (permissão 25)
+               Inserir:  POST /evolucao                           (permissão 22 / equivalente clínico)
+               Editar:   PUT  /evolucao/:id
+               Excluir:  DELETE /evolucao/:id
+
+               Selects do formulário alimentados por:
+               GET /cadastros  → pacientes e profissionais
+               GET /especialidade → especialidades
+          ============================================ -->
+          <section class="page" data-page="evolucao">
+            <header class="page-head">
+              <div>
+                <p class="page-head__eyebrow mono">CLÍNICO</p>
+                <h1 class="page-head__title">Registros Clínicos<span class="serif-acc">.</span></h1>
+                <p class="page-head__sub">Evolução e histórico das sessões terapêuticas.</p>
+              </div>
+              <div class="page-head__actions">
+                <button class="btn btn--primary" id="btn-new-evolucao">
+                  <svg class="icon" aria-hidden="true"><use href="#i-plus"></use></svg>
+                  <span>Novo registro</span>
+                </button>
+              </div>
+            </header>
+
+            <div class="table-wrap">
+              <header class="table-wrap__head">
+                <div class="table-wrap__title">
+                  <span class="mono">EVOLUÇÕES</span>
+                  <span class="table-wrap__count" id="count-evolucao">0 registros</span>
+                </div>
+                <div class="table-wrap__tools">
+                  <div class="search">
+                    <svg class="icon" aria-hidden="true"><use href="#i-search"></use></svg>
+                    <input id="search-evolucao" class="search__input" type="search" placeholder="Buscar registro…" />
+                  </div>
+                </div>
+              </header>
+              <div id="evolucao-body"></div>
+            </div>
+          </section>
+
+          <!-- ============ RELATÓRIOS ============
+               Alimentado por dados já carregados localmente de:
+               GET /consultas   → base dos registros filtrados
+               GET /cadastros   → nomes de pacientes/terapeutas para os selects
+               GET /especialidade → especialidades para o select
+
+               Exportação e impressão são operações client-side
+               sobre os dados já em memória.
+          ============================================ -->
+          <section class="page" data-page="relatorios">
+            <header class="page-head">
+              <div>
+                <p class="page-head__eyebrow mono">DOCUMENTOS</p>
+                <h1 class="page-head__title">Relatórios<span class="serif-acc">.</span></h1>
+                <p class="page-head__sub">Filtre e exporte atendimentos como documento.</p>
+              </div>
+            </header>
+
+            <form id="form-relatorio" class="filter-card">
+              <div class="filter-grid">
+                <!-- Populado com tipo=Paciente de GET /cadastros -->
+                <div class="field">
+                  <label class="field__label" for="filter-paciente">Paciente</label>
+                  <select class="select" id="filter-paciente"><option value="">Todos</option></select>
+                </div>
+                <!-- Populado com tipo=Profissional de GET /cadastros -->
+                <div class="field">
+                  <label class="field__label" for="filter-terapeuta">Terapeuta</label>
+                  <select class="select" id="filter-terapeuta"><option value="">Todos</option></select>
+                </div>
+                <!-- Populado com GET /especialidade -->
+                <div class="field">
+                  <label class="field__label" for="filter-especialidade">Especialidade</label>
+                  <select class="select" id="filter-especialidade"><option value="">Todas</option></select>
+                </div>
+                <div class="field">
+                  <label class="field__label" for="filter-di">Data inicial</label>
+                  <input class="input" id="filter-di" type="date" />
+                </div>
+                <div class="field">
+                  <label class="field__label" for="filter-df">Data final</label>
+                  <input class="input" id="filter-df" type="date" />
+                </div>
+              </div>
+
+              <div class="filter-actions">
+                <button class="btn btn--ghost" type="reset" id="btn-clear-filter">Limpar</button>
+                <button class="btn btn--secondary" type="button" id="btn-export">
+                  <svg class="icon" aria-hidden="true"><use href="#i-download"></use></svg>
+                  <span>Exportar CSV</span>
+                </button>
+                <button class="btn btn--primary" type="button" id="btn-print">
+                  <svg class="icon" aria-hidden="true"><use href="#i-printer"></use></svg>
+                  <span>Imprimir</span>
+                </button>
+              </div>
+            </form>
+
+            <div class="table-wrap">
+              <header class="table-wrap__head">
+                <div class="table-wrap__title">
+                  <span class="mono">RESULTADO</span>
+                  <span class="table-wrap__count" id="count-relatorio">0 registros</span>
+                </div>
+              </header>
+              <div id="relatorio-body"></div>
+            </div>
+          </section>
+
+        </div><!-- /content -->
+      </main>
+    </div>
+  </section>
+
+  <!-- ==========================================
+       MODAL — Pessoa
+       Inserir: POST /cadastros   (permissão 12) — rota ainda não implementada
+       Editar:  PUT  /cadastros/:id (permissão 13) — rota ainda não implementada
+       Selects de especialidades: GET /especialidade
+  ========================================== -->
+  <div class="modal" id="modal-pessoa" role="dialog" aria-modal="true" aria-labelledby="modal-pessoa-title">
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel">
+      <header class="modal__head">
+        <div>
+          <p class="modal__eyebrow mono">CADASTRO</p>
+          <h2 class="modal__title" id="modal-pessoa-title">Nova pessoa</h2>
+        </div>
+        <button class="icon-btn" data-modal-close aria-label="Fechar">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
+      </header>
+
+      <form id="form-pessoa" class="modal__body form" novalidate>
+        <div class="form-row">
+          <div class="field">
+            <label class="field__label" for="p-codigo">Código</label>
+            <input class="input" id="p-codigo" type="text" disabled />
+          </div>
+          <div class="field field--col-2">
+            <label class="field__label" for="p-nome">Nome completo *</label>
+            <input class="input" id="p-nome" type="text" placeholder="Ex.: Maria Silva" required />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <div class="field">
+            <label class="field__label" for="p-tipo">Tipo *</label>
+            <select class="select" id="p-tipo">
+              <option value="Paciente">Paciente</option>
+              <option value="Profissional">Profissional</option>
+            </select>
+          </div>
+          <div class="field">
+            <label class="field__label" for="p-nasc">Nascimento</label>
+            <input class="input" id="p-nasc" type="date" />
+          </div>
+          <div class="field">
+            <label class="field__label" for="p-tel">Telefone *</label>
+            <input class="input" id="p-tel" type="tel" placeholder="(11) 98765-4321" required />
+          </div>
+        </div>
+
+        <!-- Populado com GET /especialidade quando tipo=Profissional -->
+        <div class="field" id="p-esp-wrap" hidden>
+          <label class="field__label">Áreas de atuação</label>
+          <div class="checks" id="p-esp-checks"></div>
+        </div>
+
+        <footer class="modal__foot">
+          <button type="button" class="btn btn--ghost" data-modal-close>Cancelar</button>
+          <button type="submit" class="btn btn--primary">Salvar pessoa</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL — Evolução / Registro Clínico
+       Inserir: POST /evolucao   — rota ainda não implementada
+       Editar:  PUT  /evolucao/:id — rota ainda não implementada
+
+       Selects populados por:
+         Pacientes:      GET /cadastros  (filtrar tipo=Paciente client-side)
+         Profissionais:  GET /cadastros  (filtrar tipo=Profissional client-side)
+         Especialidades: GET /especialidade
+  ========================================== -->
+  <div class="modal" id="modal-evolucao" role="dialog" aria-modal="true" aria-labelledby="modal-evolucao-title">
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel modal__panel--wide">
+      <header class="modal__head">
+        <div>
+          <p class="modal__eyebrow mono">CLÍNICO</p>
+          <h2 class="modal__title" id="modal-evolucao-title">Novo registro clínico</h2>
+        </div>
+        <button class="icon-btn" data-modal-close aria-label="Fechar">
+          <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
+        </button>
+      </header>
+
+      <form id="form-evolucao" class="modal__body form" novalidate>
+        <div class="form-row">
+          <div class="field">
+            <label class="field__label" for="e-codigo">Código</label>
+            <input class="input" id="e-codigo" type="text" disabled />
+          </div>
+          <div class="field">
+            <label class="field__label" for="e-data">Data da sessão *</label>
+            <input class="input" id="e-data" type="date" required />
+          </div>
+          <div class="field">
+            <label class="field__label" for="e-idade">Idade</label>
+            <input class="input" id="e-idade" type="number" min="0" placeholder="Anos" />
+          </div>
+        </div>
+
+        <div class="form-row">
+          <!-- GET /cadastros → filtrar tipo=Paciente -->
+          <div class="field">
+            <label class="field__label" for="e-paciente">Paciente *</label>
+            <select class="select" id="e-paciente" required></select>
+          </div>
+          <!-- GET /cadastros → filtrar tipo=Profissional -->
+          <div class="field">
+            <label class="field__label" for="e-profissional">Profissional *</label>
+            <select class="select" id="e-profissional" required></select>
+          </div>
+          <!-- GET /especialidade -->
+          <div class="field">
+            <label class="field__label" for="e-especialidade">Especialidade *</label>
+            <select class="select" id="e-especialidade" required></select>
+          </div>
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="e-diag">Diagnóstico</label>
+          <input class="input" id="e-diag" type="text" placeholder="Ex.: Atraso na linguagem expressiva" />
+        </div>
+
+        <div class="field">
+          <label class="field__label" for="e-resumo">Resumo da sessão</label>
+          <textarea class="textarea" id="e-resumo" rows="6" placeholder="Descreva a evolução, intervenções e observações da sessão…"></textarea>
+        </div>
+
+        <footer class="modal__foot">
+          <button type="button" class="btn btn--ghost" data-modal-close>Cancelar</button>
+          <button type="submit" class="btn btn--primary">Salvar registro</button>
+        </footer>
+      </form>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       MODAL — Confirmação genérica
+       Usado para ações destrutivas como:
+       - DELETE /google/conectar  (desconectar Google)
+       - DELETE /cadastros/:id    (excluir pessoa — permissão 14, rota não implementada)
+       - DELETE /especialidade/:id (excluir especialidade — permissão 34, rota não implementada)
+  ========================================== -->
+  <div class="modal" id="modal-confirm" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title">
+    <div class="modal__backdrop" data-modal-close></div>
+    <div class="modal__panel modal__panel--sm">
+      <div class="modal__body">
+        <div class="confirm">
+          <div class="confirm__icon">
+            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+          </div>
+          <h3 class="confirm__title" id="confirm-title">Tem certeza?</h3>
+          <p class="confirm__msg" id="confirm-msg">Esta ação não poderá ser desfeita.</p>
+          <div class="confirm__actions">
+            <button class="btn btn--ghost" data-modal-close>Cancelar</button>
+            <button class="btn btn--danger" id="confirm-ok">Confirmar</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ==========================================
+       TOAST STACK
+       Usado para feedback de todas as chamadas de API
+  ========================================== -->
+  <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
+
+  <script src="js/app.js" defer></script>
+</body>
+</html>
