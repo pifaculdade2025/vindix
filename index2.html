@@ -1,20 +1,18 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-BR" data-theme="light">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <meta name="theme-color" content="#09090B" />
   <meta name="description" content="VINDIX — Sistema de Gestão Clínica Multidisciplinar" />
   <title>VINDIX · Sistema de Gestão Clínica</title>
 
-  <!-- Fonts: Instrument Serif (display) + Geist + Geist Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=DM+Serif+Display:ital@0;1&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="css/styles.css" />
 </head>
-<body class="theme-dark" data-loading="true">
+<body data-loading="true">
 
   <!-- ==========================================
        SVG SPRITE — ícones reutilizáveis
@@ -89,6 +87,14 @@
     <symbol id="i-eye-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
       <path d="M17.94 17.94A10.9 10.9 0 0 1 12 20c-7 0-10-8-10-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A10.5 10.5 0 0 1 12 4c7 0 10 8 10 8a18.5 18.5 0 0 1-2.16 3.19M1 1l22 22"/>
     </symbol>
+    <!-- Ícone sol -->
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+    </symbol>
+    <!-- Ícone lua -->
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+    </symbol>
   </svg>
 
   <!-- ==========================================
@@ -96,90 +102,162 @@
   ========================================== -->
   <section id="screen-login" class="screen screen--active" aria-label="Login">
     <div class="login">
-      <!-- Coluna hero -->
-      <aside class="login__hero" aria-hidden="true">
-        <div class="login__grid"></div>
-        <div class="login__glow"></div>
 
-        <header class="login__brand">
+      <!-- ── Coluna hero (esquerda) ── -->
+      <aside class="login__hero" aria-hidden="true">
+        <div class="login__hero-bg"></div>
+        <div class="login__hero-dots"></div>
+        <div class="login__hero-glow"></div>
+
+        <!-- Logo no topo -->
+        <header class="login__hero-header">
           <div class="brand">
-            <span class="brand__mark">
-              <span class="brand__dot"></span>
-            </span>
+            <span class="brand__mark"><span class="brand__dot"></span></span>
             <span class="brand__text">VINDI<em>X</em></span>
           </div>
-          <span class="brand__tag">Gestão Clínica</span>
+          <span class="login__version mono">v1.0</span>
         </header>
 
-        <div class="login__hero-content">
-          <p class="login__eyebrow">Plataforma integrada</p>
+        <!-- Conteúdo central -->
+        <div class="login__hero-body">
+          <span class="login__pill">Gestão Clínica Inteligente</span>
           <h1 class="login__headline">
-            Cuidar é<br>
-            <span class="login__headline-accent">um ato técnico</span><br>
-            e humano.
+            Sua clínica,<br>
+            <em>sob controle.</em>
           </h1>
           <p class="login__copy">
-            Registros clínicos, evolução de pacientes e agenda integrada em um só lugar.
+            Plataforma completa para gestão de consultas, pacientes e registros clínicos — com relatórios e agenda integrada.
           </p>
-
           <ul class="login__features">
-            <li><span class="dot"></span>Sete especialidades integradas</li>
-            <li><span class="dot"></span>Relatórios e impressão rápida</li>
-            <li><span class="dot"></span>Sincronização com Google Agenda</li>
+            <li>
+              <span class="login__feat-icon">
+                <svg class="icon" aria-hidden="true"><use href="#i-calendar"></use></svg>
+              </span>
+              <span>Agendamento e controle de consultas</span>
+            </li>
+            <li>
+              <span class="login__feat-icon">
+                <svg class="icon" aria-hidden="true"><use href="#i-chart"></use></svg>
+              </span>
+              <span>Dashboard com indicadores em tempo real</span>
+            </li>
+            <li>
+              <span class="login__feat-icon">
+                <svg class="icon" aria-hidden="true"><use href="#i-clipboard"></use></svg>
+              </span>
+              <span>Registros clínicos e relatórios rápidos</span>
+            </li>
+            <li>
+              <span class="login__feat-icon">
+                <svg class="icon" aria-hidden="true"><use href="#i-google"></use></svg>
+              </span>
+              <span>Sincronização com Google Agenda</span>
+            </li>
           </ul>
         </div>
 
+        <!-- Rodapé hero -->
         <footer class="login__hero-footer">
-          <span class="mono">v1.0 · SECURE</span>
           <span class="mono">© 2026 VINDIX</span>
+          <span class="login__secure-badge">
+            <svg class="icon" style="width:12px;height:12px" aria-hidden="true"><use href="#i-check"></use></svg>
+            ACESSO SEGURO
+          </span>
         </footer>
       </aside>
 
-      <!-- Coluna form -->
+      <!-- ── Coluna do formulário (direita) ── -->
       <main class="login__form-wrap">
+
+        <!-- Botão tema (canto superior direito) -->
+        <button class="theme-toggle" id="btn-theme" aria-label="Alternar tema" title="Alternar modo claro/escuro">
+          <span class="theme-toggle__track">
+            <span class="theme-toggle__thumb">
+              <svg class="icon theme-toggle__icon theme-toggle__icon--sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+              <svg class="icon theme-toggle__icon theme-toggle__icon--moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+            </span>
+          </span>
+        </button>
+
         <div class="login__form">
-          <div class="brand brand--compact">
+
+          <!-- Logo mobile -->
+          <div class="brand brand--compact login__brand-mobile">
             <span class="brand__mark"><span class="brand__dot"></span></span>
             <span class="brand__text">VINDI<em>X</em></span>
           </div>
 
-          <header class="login__form-head">
-            <h2 class="login__title">
-              Bem-vindo<br>
-              <span class="serif">de volta.</span>
-            </h2>
+          <!-- Cabeçalho form -->
+          <div class="login__form-head">
+            <h2 class="login__title">Bem-vindo<br><span class="login__title-accent">de volta.</span></h2>
             <p class="login__sub">Acesse o sistema com suas credenciais.</p>
-          </header>
+          </div>
 
+          <!-- Seletor de perfil -->
+          <div class="login__roles" role="group" aria-label="Tipo de acesso">
+            <button class="login__role login__role--active" data-role="terapeuta" type="button">
+              <span class="login__role-icon">🩺</span>
+              <span class="login__role-info">
+                <strong>Terapeuta</strong>
+                <small>Profissional de saúde</small>
+              </span>
+            </button>
+            <button class="login__role" data-role="admin" type="button">
+              <span class="login__role-icon">🏥</span>
+              <span class="login__role-info">
+                <strong>Administrador</strong>
+                <small>Gestão do sistema</small>
+              </span>
+            </button>
+          </div>
+
+          <!-- Mensagem de erro -->
+          <div class="login__error" id="login-error" role="alert" aria-live="assertive" hidden>
+            <svg class="icon" aria-hidden="true"><use href="#i-alert"></use></svg>
+            <span id="login-error-msg">Usuário ou senha incorretos.</span>
+          </div>
+
+          <!-- Formulário -->
           <form id="form-login" class="form" novalidate>
             <div class="field">
               <label class="field__label" for="input-user">Usuário</label>
               <div class="field__control">
-                <input class="input" id="input-user" name="usuario" type="text" autocomplete="username" placeholder="seu.usuario" required />
+                <input class="input" id="input-user" name="usuario" type="text"
+                  autocomplete="username" placeholder="seu.usuario" required />
               </div>
             </div>
 
             <div class="field">
               <label class="field__label" for="input-pass">Senha</label>
               <div class="field__control field__control--with-action">
-                <input class="input" id="input-pass" name="senha" type="password" autocomplete="current-password" placeholder="••••••••" required />
+                <input class="input" id="input-pass" name="senha" type="password"
+                  autocomplete="current-password" placeholder="••••••••" required />
                 <button type="button" class="field__toggle" id="btn-toggle-pass" aria-label="Mostrar senha">
                   <svg class="icon" aria-hidden="true"><use href="#i-eye"></use></svg>
                 </button>
               </div>
             </div>
 
+            <div class="login__form-footer">
+              <label class="login__remember">
+                <input type="checkbox" id="input-remember" />
+                <span>Lembrar acesso</span>
+              </label>
+              <a href="#" class="login__forgot">Esqueci a senha</a>
+            </div>
+
             <button class="btn btn--primary btn--block btn--lg" id="btn-login" type="submit">
-              <span class="btn__label">Entrar</span>
+              <span class="btn__label">Entrar no sistema</span>
               <svg class="icon btn__icon" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
             </button>
-
-            <p class="login__meta mono">
-              <span>BACKEND</span>
-              <span class="login__dot"></span>
-              <span id="login-backend-url">localhost:8080</span>
-            </p>
           </form>
+
+          <!-- Rodapé form -->
+          <p class="login__meta mono">
+            <span class="login__dot"></span>
+            <span>Sistema local · </span>
+            <span id="login-backend-url">modo offline</span>
+          </p>
         </div>
       </main>
     </div>
@@ -243,6 +321,12 @@
         </nav>
 
         <footer class="sidebar__foot">
+          <!-- Botão de tema na sidebar -->
+          <button class="theme-toggle-sidebar" id="btn-theme-sidebar" aria-label="Alternar tema">
+            <svg class="icon theme-icon--sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+            <svg class="icon theme-icon--moon" aria-hidden="true"><use href="#i-moon"></use></svg>
+            <span class="theme-toggle-sidebar__label">Modo escuro</span>
+          </button>
           <div class="user-chip">
             <div class="avatar" id="user-avatar" aria-hidden="true">?</div>
             <div class="user-chip__info">
@@ -279,6 +363,11 @@
             <button class="btn btn--ghost btn--sm" id="btn-connect-google" title="Conectar ao Google Agenda">
               <svg class="icon" aria-hidden="true"><use href="#i-google"></use></svg>
               <span class="only-desktop">Conectar Google</span>
+            </button>
+            <!-- Botão tema na topbar -->
+            <button class="icon-btn" id="btn-theme-top" aria-label="Alternar tema" title="Alternar modo claro/escuro">
+              <svg class="icon theme-icon--sun" aria-hidden="true"><use href="#i-sun"></use></svg>
+              <svg class="icon theme-icon--moon" aria-hidden="true"><use href="#i-moon"></use></svg>
             </button>
             <div class="kbd-hint only-desktop">
               <kbd>⌘</kbd><kbd>K</kbd>
@@ -406,7 +495,6 @@
                 </button>
               </div>
             </header>
-
             <div class="table-wrap">
               <header class="table-wrap__head">
                 <div class="table-wrap__title">
@@ -445,13 +533,11 @@
                 </button>
               </div>
             </header>
-
             <div class="tabs" role="tablist" aria-label="Filtrar por tipo">
               <button class="tab tab--active" role="tab" data-filter="all">Todos</button>
               <button class="tab" role="tab" data-filter="Paciente">Pacientes</button>
               <button class="tab" role="tab" data-filter="Profissional">Profissionais</button>
             </div>
-
             <div class="table-wrap">
               <header class="table-wrap__head">
                 <div class="table-wrap__title">
@@ -478,7 +564,6 @@
                 <p class="page-head__sub">Áreas de atuação disponíveis no sistema.</p>
               </div>
             </header>
-
             <form id="form-nova-esp" class="add-strip">
               <input class="input" id="input-nova-esp" type="text" placeholder="Nome da nova especialidade…" maxlength="60" />
               <button class="btn btn--primary" type="submit">
@@ -486,7 +571,6 @@
                 <span>Adicionar</span>
               </button>
             </form>
-
             <div class="chips" id="esp-chips"></div>
           </section>
 
@@ -505,7 +589,6 @@
                 </button>
               </div>
             </header>
-
             <div class="table-wrap">
               <header class="table-wrap__head">
                 <div class="table-wrap__title">
@@ -532,7 +615,6 @@
                 <p class="page-head__sub">Filtre e exporte atendimentos como documento.</p>
               </div>
             </header>
-
             <form id="form-relatorio" class="filter-card">
               <div class="filter-grid">
                 <div class="field">
@@ -556,7 +638,6 @@
                   <input class="input" id="filter-df" type="date" />
                 </div>
               </div>
-
               <div class="filter-actions">
                 <button class="btn btn--ghost" type="reset" id="btn-clear-filter">Limpar</button>
                 <button class="btn btn--secondary" type="button" id="btn-export">
@@ -569,7 +650,6 @@
                 </button>
               </div>
             </form>
-
             <div class="table-wrap">
               <header class="table-wrap__head">
                 <div class="table-wrap__title">
@@ -601,7 +681,6 @@
           <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
         </button>
       </header>
-
       <form id="form-pessoa" class="modal__body form" novalidate>
         <div class="form-row">
           <div class="field">
@@ -613,7 +692,6 @@
             <input class="input" id="p-nome" type="text" placeholder="Ex.: Maria Silva" required />
           </div>
         </div>
-
         <div class="form-row">
           <div class="field">
             <label class="field__label" for="p-tipo">Tipo *</label>
@@ -631,12 +709,10 @@
             <input class="input" id="p-tel" type="tel" placeholder="(11) 98765-4321" required />
           </div>
         </div>
-
         <div class="field" id="p-esp-wrap" hidden>
           <label class="field__label">Áreas de atuação</label>
           <div class="checks" id="p-esp-checks"></div>
         </div>
-
         <footer class="modal__foot">
           <button type="button" class="btn btn--ghost" data-modal-close>Cancelar</button>
           <button type="submit" class="btn btn--primary">Salvar pessoa</button>
@@ -660,7 +736,6 @@
           <svg class="icon" aria-hidden="true"><use href="#i-close"></use></svg>
         </button>
       </header>
-
       <form id="form-evolucao" class="modal__body form" novalidate>
         <div class="form-row">
           <div class="field">
@@ -676,7 +751,6 @@
             <input class="input" id="e-idade" type="number" min="0" placeholder="Anos" />
           </div>
         </div>
-
         <div class="form-row">
           <div class="field">
             <label class="field__label" for="e-paciente">Paciente *</label>
@@ -691,17 +765,14 @@
             <select class="select" id="e-especialidade" required></select>
           </div>
         </div>
-
         <div class="field">
           <label class="field__label" for="e-diag">Diagnóstico</label>
           <input class="input" id="e-diag" type="text" placeholder="Ex.: Atraso na linguagem expressiva" />
         </div>
-
         <div class="field">
           <label class="field__label" for="e-resumo">Resumo da sessão</label>
           <textarea class="textarea" id="e-resumo" rows="6" placeholder="Descreva a evolução, intervenções e observações da sessão…"></textarea>
         </div>
-
         <footer class="modal__foot">
           <button type="button" class="btn btn--ghost" data-modal-close>Cancelar</button>
           <button type="submit" class="btn btn--primary">Salvar registro</button>
@@ -732,11 +803,58 @@
     </div>
   </div>
 
-  <!-- ==========================================
-       TOAST STACK
-  ========================================== -->
+  <!-- TOAST STACK -->
   <div class="toasts" id="toasts" aria-live="polite" aria-atomic="false"></div>
 
   <script src="js/app.js" defer></script>
+
+  <!-- Script de tema (inline para evitar flash) -->
+  <script>
+    (function() {
+      // Aplica tema salvo ANTES do render
+      const saved = localStorage.getItem('vindix:theme') || 'light';
+      document.documentElement.setAttribute('data-theme', saved);
+
+      function applyTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('vindix:theme', theme);
+        // Atualiza labels
+        const label = document.getElementById('theme-sidebar-label');
+        if (label) label.textContent = theme === 'dark' ? 'Modo claro' : 'Modo escuro';
+      }
+
+      function toggleTheme() {
+        const current = document.documentElement.getAttribute('data-theme') || 'light';
+        applyTheme(current === 'dark' ? 'light' : 'dark');
+      }
+
+      // Aguarda DOM para vincular botões
+      document.addEventListener('DOMContentLoaded', function() {
+        ['btn-theme', 'btn-theme-top', 'btn-theme-sidebar'].forEach(function(id) {
+          const btn = document.getElementById(id);
+          if (btn) btn.addEventListener('click', toggleTheme);
+        });
+
+        // Seletor de perfil no login
+        document.querySelectorAll('.login__role').forEach(function(btn) {
+          btn.addEventListener('click', function() {
+            document.querySelectorAll('.login__role').forEach(function(b) {
+              b.classList.remove('login__role--active');
+            });
+            btn.classList.add('login__role--active');
+          });
+        });
+
+        // Esconde erro ao digitar
+        ['input-user','input-pass'].forEach(function(id) {
+          const el = document.getElementById(id);
+          if (el) el.addEventListener('input', function() {
+            const err = document.getElementById('login-error');
+            if (err) err.hidden = true;
+          });
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
