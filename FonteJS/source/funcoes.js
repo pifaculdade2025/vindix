@@ -13,6 +13,7 @@ export function handleError(res, err, context = '') {
 
 export async function validarLogin(req, res){
     const { usuario, senha } = req.body;
+    console.log('oi');
 
     if (!usuario || !senha) {
         return res.status(400).json({ erro: 'Usuário e senha são obrigatórios' });
