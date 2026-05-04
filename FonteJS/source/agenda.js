@@ -89,7 +89,9 @@ export async function callbackGoogle(req, res) {
         const tokenData = await resultGoogle.json();
 
         if (tokenData.error) {
-            return res.status(500).send('Erro Google: ' + tokenData.error_description);
+            console.error('[callbackGoogle] Erro Google:', tokenData.error_description);
+            return res.status(500).send('Erro ao conectar com Google. Tente novamente.');
+            // return res.status(500).send('Erro Google: ' + tokenData.error_description);
         }
         if (!tokenData.refresh_token) {
             return res.status(500).send('Refresh token não retornado. Revogue o acesso no Google e tente novamente.');
@@ -109,8 +111,8 @@ export async function callbackGoogle(req, res) {
         const idEmpresa = resultUsuario[0].empresa;
 
         await executeQueryDBPrincipal(
-            ' INSERT INTO GOOGLE_TOKEN (ID, ACCESS_TOKEN, REFRESH_TOKEN, EXPIRA_EM, ID_EMPRESA)' +
-            ' VALUES ((SELECT COALESCE(MAX(ID), 0) + 1 FROM GOOGLE_TOKEN), ?, ?, ?, ?)',
+            ' INSERT INTO GOOGLE_TOKEN (ACCESS_TOKEN, REFRESH_TOKEN, EXPIRA_EM, ID_EMPRESA)' +
+            ' VALUES (?, ?, ?, ?)',
             [encrypt(tokenData.access_token), encrypt(tokenData.refresh_token), expiraEm, idEmpresa]
         );
 
@@ -244,7 +246,9 @@ export async function criarEventoGoogle(req, res) {
         const googleResp = await resultGoogle.json();
 
         if (googleResp.error) {
-            return res.status(500).json({ erro: 'Erro Google: ' + googleResp.error.message });
+            console.error('[callbackGoogle] Erro Google:', googleResp.error.message);
+            return res.status(500).send('Erro ao conectar com Google. Tente novamente.');
+            // return res.status(500).json({ erro: 'Erro Google: ' + googleResp.error.message });
         }
 
         await executeQueryEmpresa(

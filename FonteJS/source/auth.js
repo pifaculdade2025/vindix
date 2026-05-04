@@ -25,7 +25,7 @@ export function gerarToken(usuarioId, tokenVersion, permissoes = []) {
         },
         SECRET,
         {
-            expiresIn: "1d" 
+            expiresIn: "1h" 
         }
     )
 }
@@ -33,9 +33,7 @@ export function gerarToken(usuarioId, tokenVersion, permissoes = []) {
 export async function autenticarToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     
-    const token = authHeader
-        ? authHeader.split(' ')[1]
-        : req.query.token;
+    const token = authHeader?.split(' ')[1];
 
     if (!token) {
         return res.status(401).json({ erro: "Token não enviado" });
