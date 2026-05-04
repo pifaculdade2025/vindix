@@ -20,7 +20,7 @@ const loginSlow = slowDown({
 });
 
 const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,  // 15 minutos
+  windowMs: 5 * 60 * 1000,  // 5 minutos
   max: 10,                    // máximo 10 tentativas
   standardHeaders: true,
   legacyHeaders: false,
@@ -68,7 +68,8 @@ app.post('/usuarios', autenticarToken, exigirPermissao(1, 2), funcoes.cadastrarU
   //Nome
   app.put('/usuarios/nome', autenticarToken, exigirPermissao(1, 2), funcoes.alterarNome);
   //permissoes do usuario
-  app.get('/usuarios/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.carregarPermissoesUsuario)
+  app.get('/usuarios/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.carregarPermissoesUsuario);
+  app.get('/usuarios/permissoes/historico/:id', autenticarToken, exigirPermissao(1, 2), funcoes.HistoricoPermissoesUsuario);
   app.post('/usuarios/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.adicionarPermissoes);
   app.delete('/usuarios/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.excluirPermissao);
 
@@ -77,12 +78,34 @@ app.get('/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.carregarP
 
 //cadastros
 app.get('/cadastros', autenticarToken, exigirPermissao(1, 10, 11), funcoes.carregarCadastros);
+app.get('/cadastros/:id', autenticarToken, exigirPermissao(1, 10, 11), funcoes.carregarCadastroPorId);
+app.get('/cadastros/historico/delete', autenticarToken, exigirPermissao(1, 10, 15), funcoes.HistoricoDeleteCadastros);
+app.get('/cadastros/historico/:id', autenticarToken, exigirPermissao(1, 10, 15), funcoes.HistoricoCadastros);
+app.post('/cadastros', autenticarToken, exigirPermissao(1, 10, 12), funcoes.adicionarCadastros);
+app.put('/cadastros/:id', autenticarToken, exigirPermissao(1, 10, 13), funcoes.alterarCadastros);
+app.delete('/cadastros/:id', autenticarToken, exigirPermissao(1, 10, 14), funcoes.excluirCadastros);
+
+//cadastros relacao
+app.get('/cadastrosRelacao', autenticarToken, exigirPermissao(1, 10, 11), funcoes.carregarCadastrosRelacao);
+app.get('/cadastrosRelacao/historico/:idCadastro', autenticarToken, exigirPermissao(1, 10, 15), funcoes.HistoricoCadastrosRelacao);
+app.post('/cadastrosRelacao', autenticarToken, exigirPermissao(1, 10, 13), funcoes.adicionarCadastrosRelacao);
+app.delete('/cadastrosRelacao/:id', autenticarToken, exigirPermissao(1, 10, 13), funcoes.excluirCadastrosRelacao);
 
 //consultas
 app.get('/consultas', autenticarToken, exigirPermissao(1, 20, 21), funcoes.carregarConsultas);
+app.get('/consultas/historico/delete', autenticarToken, exigirPermissao(1, 20, 25), funcoes.HistoricoDeleteConsultas);
+app.get('/consultas/historico/:id', autenticarToken, exigirPermissao(1, 20, 25), funcoes.HistoricoConsultas);
+app.post('/consultas', autenticarToken, exigirPermissao(1, 20, 22), funcoes.AdicionarConsultas);
+app.put('/consultas/:id', autenticarToken, exigirPermissao(1, 20, 23), funcoes.alterarConsultas);
+app.delete('/consultas/:id', autenticarToken, exigirPermissao(1, 20, 24), funcoes.excluirConsultas);
 
 //Especialidades
-app.get('/especialidade', autenticarToken, exigirPermissao(1, 30, 31), funcoes.carregarEspecialidades)
+app.get('/especialidade', autenticarToken, exigirPermissao(1, 30, 31), funcoes.carregarEspecialidades);
+app.get('/especialidade/historico/delete', autenticarToken, exigirPermissao(1, 30, 35), funcoes.HistoricoDeleteEspecialidades);
+app.get('/especialidade/historico/:id', autenticarToken, exigirPermissao(1, 30, 35), funcoes.HistoricoEspecialidades);
+app.post('/especialidade', autenticarToken, exigirPermissao(1, 30, 32), funcoes.adicionarEspecialidades);
+app.put('/especialidade/:id', autenticarToken, exigirPermissao(1, 30, 33), funcoes.alterarEspecialidades);
+app.delete('/especialidade/:id', autenticarToken, exigirPermissao(1, 30, 33), funcoes.excluirEspecialidades);
 
 //Google Agenda
 app.get('/google/conectar', autenticarToken, exigirPermissao(1), agenda.conectarGoogle);
@@ -109,6 +132,7 @@ ID|TABELA        |TIPO     |
 23|CONSULTAS     |ALTERAR  |
 24|CONSULTAS     |EXCLUIR  |
 25|CONSULTAS     |HISTORICO|
+26|CONSULTAS     |AGENDA   |
 30|ESPECIALIDADES|GERAL    |
 31|ESPECIALIDADES|ACESSAR  |
 32|ESPECIALIDADES|INSERIR  |

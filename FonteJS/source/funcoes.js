@@ -1,5 +1,6 @@
-import { executeQueryDBPrincipal, executeQueryEmpresa } from "./conexaoBD.js";
+import {executeQueryDBPrincipal, executeQueryEmpresa, InserirHistorico, InserirHistoricoInsert, InserirHistoricoDelete} from "./conexaoBD.js";
 import { gerarToken, limparCacheUsuario } from "./auth.js"
+import {decrypt, encrypt} from "./cripto.js";
 import bcrypt from "bcrypt";
 import crypto from 'crypto';
 
@@ -11,9 +12,13 @@ export function handleError(res, err, context = '') {
     res.status(500).json({ erro: 'Erro interno do servidor' });
 }
 
+const CAMPOS_CRIPTOGRAFADOS = {
+    CADASTROS: new Set(['CPF', 'DIAGNOSTICO']),
+    CONSULTAS:  new Set(['RESUMO_SESSAO']),
+};
+
 export async function validarLogin(req, res){
     const { usuario, senha } = req.body;
-    console.log('oi');
 
     if (!usuario || !senha) {
         return res.status(400).json({ erro: 'Usuário e senha são obrigatórios' });
@@ -109,7 +114,7 @@ export async function cadastrarUsuario(req, res) {
 
         const hash = await bcrypt.hash(senha, SALT_ROUNDS);
         await executeQueryDBPrincipal(
-            'INSERT INTO USUARIOS (ID, LOGIN, SENHA, EMPRESA, NOME) VALUES ((SELECT COALESCE(MAX(ID), 0) + 1 FROM USUARIOS), ?, ?, ?, ?)',
+            'INSERT INTO USUARIOS (LOGIN, SENHA, EMPRESA, NOME) VALUES (?, ?, ?, ?)',
             [login, hash, empresa, nome]
         );
 
@@ -134,7 +139,11 @@ export async function carregarPermissoes(req, res) {
 
 export async function carregarPermissoesUsuario(req, res) {
     const usuarioLogado = req.usuario;
-    const usuario = req.query.usuario;  
+    const usuario = parseInt(req.query.usuario, 10);
+
+    if (!Number.isInteger(usuario) || usuario <= 0) {
+        return res.status(400).json({ erro: 'ID de usuário inválido' });
+    }
 
     try {
         const check = await executeQueryDBPrincipal(
@@ -172,6 +181,14 @@ export async function adicionarPermissoes(req, res) {
         return res.status(400).json({ erro: 'Informe o usuario e a permissão'});
     }
 
+    if (!Number.isInteger(usuario) || usuario <= 0) {
+        return res.status(400).json({ erro: 'ID de usuário inválido' });
+    }
+
+    if (!Number.isInteger(permissao) || permissao <= 0) {
+        return res.status(400).json({ erro: 'ID de permissao inválido' });
+    }
+
     try {
         const check = await executeQueryDBPrincipal(
             'SELECT 1 FROM USUARIOS WHERE ID=? AND EMPRESA=(SELECT EMPRESA FROM USUARIOS WHERE ID=?)',
@@ -190,10 +207,12 @@ export async function adicionarPermissoes(req, res) {
         }    
 
         await executeQueryEmpresa(
-            'INSERT INTO PERMISSOES_USUARIOS (ID, ID_USUARIO, ID_PERMISSAO) VALUES ((SELECT COALESCE(MAX(ID), 0) + 1 FROM PERMISSOES_USUARIOS), ?, ?) ',
+            'INSERT INTO PERMISSOES_USUARIOS (ID_USUARIO, ID_PERMISSAO) VALUES (?, ?) ',
             [usuario, permissao],
             usuarioLogado
         );
+        
+        await InserirHistoricoInsert(usuarioLogado, 'PERMISSOES_USUARIOS');
         res.status(201).json({ sucesso: true });
     } catch(err) {
         return handleError(res, err, 'adicionarPermissoes');
@@ -209,11 +228,25 @@ export async function excluirPermissao(req, res) {
     }
 
     try {
-        await executeQueryDBPrincipal(
-            'UPDATE USUARIOS SET TOKEN_VERSION = COALESCE(TOKEN_VERSION, 0) + 1 WHERE ID = (SELECT ID_USUARIO FROM PERMISSOES_USUARIOS WHERE ID = ?)',
-            [idPermissao]
+        const result = await executeQueryEmpresa(
+            'SELECT ID_USUARIO FROM PERMISSOES_USUARIOS WHERE ID = ?',  
+            [idPermissao],
+            usuarioLogado
         );
 
+        if (result.length === 0) {                
+            return res.status(404).json({ erro: 'Usuário não encontrado' });
+        }
+
+        const usuario = result[0].id_usuario;
+        const empresa = await getEmpresa(usuarioLogado);
+
+        await executeQueryDBPrincipal(
+            'UPDATE USUARIOS SET TOKEN_VERSION = COALESCE(TOKEN_VERSION, 0) + 1 WHERE ID = ? AND EMPRESA = ?',
+            [usuario, empresa]
+        );
+
+        await InserirHistoricoDelete(usuarioLogado, 'PERMISSOES_USUARIOS', idPermissao);
         await executeQueryEmpresa(
             'DELETE FROM PERMISSOES_USUARIOS WHERE ID = ?',
             [idPermissao],
@@ -225,6 +258,15 @@ export async function excluirPermissao(req, res) {
     }
 }
 
+export async function HistoricoPermissoesUsuario(req, res) {
+    try {
+        const result = await getHistorico('PERMISSOES_USUARIOS', req.params.id, req.usuario);
+        res.status(200).json(result);
+    } catch(err) {
+        return handleError(res, err, 'HistoricoPermissoesUsuario');
+    }       
+}
+
 export async function alterarNome(req, res) {
     const usuarioLogado = req.usuario;
     const { usuario, novonome,  updatedAt } = req.body;
@@ -233,7 +275,7 @@ export async function alterarNome(req, res) {
         return res.status(400).json({ erro: 'Informe o usuário que deseja alterar '});
     }
 
-    if (!novonome || novonome.length > 100) {
+    if (!novonome || novonome.trim().length === 0 || novonome.length > 100) {
         return res.status(400).json({ erro: 'Informe um nome valido' });
     }
 
@@ -265,6 +307,10 @@ export async function alterarSenha(req, res) {
  
     if (novaSenha.length < 8) {
         return res.status(400).json({ erro: 'A nova senha deve ter no mínimo 8 caracteres' });
+    }
+
+    if (novaSenha.length > 60) {
+        return res.status(400).json({ erro: 'Senha deve ter no máximo 60 caracteres' });
     }
 
     try {
@@ -315,21 +361,363 @@ export async function carregarConsultas(req, res){
             '    PACIENTES.NOME AS PACIENTE, '+
             '    TERAPEUTAS.NOME AS TERAPEUTA, '+
             '    CONSULTAS.DT_HR_SESSAO DATA_HORA, '+
+            '    CONSULTAS.ENVIADO_GOOGLE, '+
+            '    CONSULTAS.RESUMO_SESSAO, '+
+            '    CONSULTAS.UPDATED_AT, '+
+            '    CONSULTAS.ID_TERAPEUTA, '+
+            '    CONSULTAS.ID_ESPECIALIDADE, '+
+            '    CONSULTAS.TEMPO_SESSAO, '+
+            '    CONSULTAS.ID_PACIENTE, '+
             '    ESPECIALIDADES.DESCRICAO AS ESPECIALIDADE ' +
             ' FROM CONSULTAS  ' +
             '    JOIN CADASTROS PACIENTES ON PACIENTES.ID = CONSULTAS.ID_PACIENTE ' +
             '    JOIN CADASTROS TERAPEUTAS ON TERAPEUTAS.ID = CONSULTAS.ID_TERAPEUTA ' +
             '    JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE ' +
             ' ORDER BY CONSULTAS.DT_HR_SESSAO DESC',
-            [por_pagina, offset],
+            [por_pagina, offset],   
+            usuario
+        );
+        const descriptografado = result.map(r => ({
+            ...r,
+            resumo_sessao: r.resumo_sessao ? decrypt(r.resumo_sessao) : null,
+        }));
+        return res.status(200).json(descriptografado);
+
+    } catch(err) {
+        return handleError(res, err, 'carregarConsultas');
+    }    
+}
+
+export async function AdicionarConsultas(req, res) {
+    const usuario = req.usuario;    
+
+    try {
+        const result = await executeQueryEmpresa(
+            "INSERT INTO CONSULTAS (ID_PACIENTE, ID_TERAPEUTA, RESUMO_SESSAO, DT_HR_SESSAO, ID_ESPECIALIDADE, ENVIADO_GOOGLE, TEMPO_SESSAO, UPDATED_AT) "+
+            " VALUES (?, ?, ?, ?, ?, 'N', ?, 1) ",
+            [req.body.id_paciente, req.body.id_terapeuta, encrypt(req.body.resumo_sessao), req.body.dt_hr_sessao, req.body.id_especialidade, req.body.tempo_sessao],
+            usuario
+        );
+        await InserirHistoricoInsert(usuario, 'CONSULTAS');
+        res.status(201).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'AdicionarConsultas');
+    }  
+}
+
+export async function alterarConsultas(req, res) {
+    const usuario = req.usuario;
+
+    try {
+        const { updatedAt, campos } = req.body;
+
+        if (!updatedAt) {
+            return res.status(400).json({ erro: 'updatedAt é obrigatório' });
+        }
+
+        await InserirHistorico(usuario, 'CONSULTAS', req.params.id, campos);
+  
+        const setClauses = [];
+        const valores = [];
+        
+        const CAMPOS_PERMITIDOS = new Set([
+            'ID_PACIENTE', 'ID_TERAPEUTA', 'RESUMO_SESSAO', 'DT_HR_SESSAO', 'ID_ESPECIALIDADE', 'TEMPO_SESSAO'
+        ]);
+
+        for (const [campo, valor] of Object.entries(campos)) {
+            if (campo.toUpperCase() === 'UPDATED_AT') {
+                continue;
+            }
+            if (!CAMPOS_PERMITIDOS.has(campo.toUpperCase())) {
+                return res.status(400).json({ erro: `Campo inválido: ${campo}` });
+            }
+            setClauses.push(`${campo} = ?`);
+            valores.push(valor);
+        }
+
+        if (setClauses.length === 0) {
+            return res.status(400).json({ erro: 'Nenhum campo para atualizar' });
+        }
+
+        valores.push(req.params.id);
+        valores.push(req.body.updatedAt);
+
+        const result = await executeQueryEmpresa(
+            `UPDATE CONSULTAS SET UPDATED_AT = UPDATED_AT + 1, ${setClauses.join(', ')} WHERE ID = ? AND UPDATED_AT = ? RETURNING ID `,
+            valores,
+            usuario
+        );
+
+        if (result.length === 0) {
+            res.status(409).json({ erro: 'Registro desatualizado, tente novamente' });
+        }
+        else {
+            res.status(200).json({ sucesso: true });
+        }
+
+    } catch(err) {
+        return handleError(res, err, 'alterarConsultas');
+    }    
+}
+
+export async function excluirConsultas(req, res) {
+    const usuario = req.usuario;
+
+    try {
+        await InserirHistoricoDelete(usuario, 'CONSULTAS', req.params.id);
+        await executeQueryEmpresa(
+            'DELETE FROM CONSULTAS WHERE ID = ?',
+            [req.params.id],
+            usuario        
+        );        
+        res.status(200).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'excluirConsultas');
+    }        
+}
+
+export async function HistoricoDeleteConsultas(req, res) {
+    try {
+        const result = await getHistorico('CONSULTAS', null, req.usuario);
+        res.status(200).json(result);
+    } catch(err) {
+        return handleError(res, err, 'HistoricoDeleteConsultas');
+    }     
+}
+
+export async function HistoricoConsultas(req, res) {
+    try {
+        const result = await getHistorico('CONSULTAS', req.params.id, req.usuario);
+        res.status(200).json(result);
+    } catch(err) {
+        return handleError(res, err, 'HistoricoConsultas');
+    }     
+}
+
+export async function carregarCadastrosRelacao(req, res) {
+    const usuario = req.usuario;
+
+    const idCadastro = parseInt(req.query.idCadastro, 10);
+    if (!Number.isInteger(idCadastro) || idCadastro <= 0) {
+        return res.status(400).json({ erro: 'ID de cadastro inválido' });
+    }
+
+    try {
+        const result = await executeQueryEmpresa(
+            ' SELECT '+
+            '    ID, '+
+            '    ID_CADASTRO, '+
+            '    ID_ESPECIALIDADE_TERAPEUTA '+
+            ' FROM CADASTRO_RELACAO '+
+            ' WHERE ID_CADASTRO = ? ',
+            [idCadastro],
             usuario
         );
 
         return res.status(200).json(result);
 
     } catch(err) {
-        return handleError(res, err, 'carregarConsultas');
+        return handleError(res, err, 'carregarCadastrosRelacao');
+    }           
+}
+
+export async function HistoricoCadastrosRelacao(req, res) {
+    try {
+        const result = await getHistorico('CADASTRO_RELACAO', req.params.id, req.usuario);
+        res.status(200).json(result);
+    } catch(err) {
+        return handleError(res, err, 'HistoricoCadastrosRelacao');
+    }       
+}
+
+export async function adicionarCadastrosRelacao(req, res) {
+    const usuario = req.usuario;  
+    const { idCadastro, idRelacao } = req.body;
+
+    if (!Number.isInteger(idCadastro) || idCadastro <= 0) {
+        return res.status(400).json({ erro: 'ID de cadastro inválido' });
     }    
+
+    if (!Number.isInteger(idRelacao) || idRelacao <= 0) {
+        return res.status(400).json({ erro: 'ID de relação inválido' });
+    }    
+
+    try {        
+        const result = await executeQueryEmpresa(
+            'INSERT INTO CADASTRO_RELACAO (ID_CADASTRO, ID_ESPECIALIDADE_TERAPEUTA) '+
+            ' VALUES (?, ?) ',
+            [idCadastro, idRelacao],
+            usuario
+        );
+        await InserirHistoricoInsert(usuario, 'CADASTRO_RELACAO');
+        res.status(201).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'adicionarCadastrosRelacao');
+    }        
+}
+
+export async function excluirCadastrosRelacao(req, res) {
+    const usuario = req.usuario;
+    const idRelacao = parseInt(req.params.id, 10);
+    if (!Number.isInteger(idRelacao) || idRelacao <= 0) {
+        return res.status(400).json({ erro: 'ID de relação inválido' });
+    }
+
+    if (!Number.isInteger(idRelacao) || idRelacao <= 0) {
+        return res.status(400).json({ erro: 'ID de relação inválido' });
+    } 
+
+    try {
+        await InserirHistoricoDelete(usuario, 'CADASTRO_RELACAO', idRelacao);
+        await executeQueryEmpresa(
+            'DELETE FROM CADASTRO_RELACAO WHERE ID = ?',
+            [idRelacao],
+            usuario        
+        );        
+        res.status(200).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'excluirCadastrosRelacao');
+    }    
+}
+
+export async function adicionarCadastros(req, res) {
+    const usuario = req.usuario;  
+    const { nome, telefone, dt_nasc, tipo, cpf } = req.body;
+
+    if (!nome || typeof nome !== 'string' || nome.trim().length === 0 || nome.length > 150) {
+        return res.status(400).json({ erro: 'Nome inválido' });
+    }
+    if (cpf && !/^\d{11}$/.test(cpf.replace(/\D/g, ''))) {
+        return res.status(400).json({ erro: 'CPF inválido' });
+    }
+    if (!['Paciente', 'Terapeuta'].includes(tipo)) { 
+        return res.status(400).json({ erro: 'Tipo inválido' });
+    }  
+
+    try {        
+        const result = await executeQueryEmpresa(
+            'INSERT INTO CADASTROS (NOME, TELEFONE, DT_NASC, DT_CADASTRO, REGISTRO_PROFISSIONAL, TIPO, CPF, DIAGNOSTICO, UPDATED_AT) '+
+            ' VALUES (?, ?, ?, CURRENT_DATE, ?, ?, ?, ?, 1) ',
+            [nome, telefone, dt_nasc, req.body.registro_profissional, tipo, encrypt(cpf ?? ''), encrypt(req.body.diagnostico ?? '')],
+            usuario
+        );
+        await InserirHistoricoInsert(usuario, 'CADASTROS');
+        res.status(201).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'adicionarCadastros');
+    }  
+}
+
+export async function HistoricoDeleteCadastros(req, res) {
+    try {
+        const result = await getHistorico('CADASTROS', null, req.usuario);
+        res.status(200).json(result);
+    } catch(err) {
+        return handleError(res, err, 'HistoricoDeleteCadastros');
+    }     
+}
+
+export async function HistoricoCadastros(req, res) {
+    try {
+        const result = await getHistorico('CADASTROS', req.params.id, req.usuario);
+        res.status(200).json(result);
+    } catch(err) {
+        return handleError(res, err, 'HistoricoCadastros');
+    }     
+}
+
+export async function excluirCadastros(req, res) {
+    const usuario = req.usuario;
+
+    try {
+        await InserirHistoricoDelete(usuario, 'CADASTROS', req.params.id);
+        await executeQueryEmpresa(
+            'DELETE FROM CADASTROS WHERE ID = ?',
+            [req.params.id],
+            usuario        
+        );        
+        res.status(200).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'excluirCadastros');
+    }
+}
+
+export async function alterarCadastros(req, res) {
+    const usuario = req.usuario;
+
+    try {
+         const { updatedAt, campos } = req.body;
+
+        if (!updatedAt) {
+            return res.status(400).json({ erro: 'updatedAt é obrigatório' });
+        }
+
+        await InserirHistorico(usuario, 'CADASTROS', req.params.id, campos);
+  
+        const setClauses = [];
+        const valores = [];
+
+        const CAMPOS_PERMITIDOS = new Set([
+            'NOME', 'TELEFONE', 'DT_NASC', 'REGISTRO_PROFISSIONAL', 'TIPO', 'CPF', 'DIAGNOSTICO'
+        ]);
+
+        for (const [campo, valor] of Object.entries(campos)) {
+            if (campo.toUpperCase() === 'UPDATED_AT') {
+                continue;
+            }            
+            if (!CAMPOS_PERMITIDOS.has(campo.toUpperCase())) {
+                return res.status(400).json({ erro: `Campo inválido: ${campo}` });
+            }
+            setClauses.push(`${campo} = ?`);
+            valores.push(valor);
+        }
+
+        if (setClauses.length === 0) {
+            return res.status(400).json({ erro: 'Nenhum campo para atualizar' });
+        }
+
+        valores.push(req.params.id);
+        valores.push(req.body.updatedAt);
+
+        const result = await executeQueryEmpresa(
+            `UPDATE CADASTROS SET UPDATED_AT = UPDATED_AT + 1, ${setClauses.join(', ')} WHERE ID = ? AND UPDATED_AT = ?`,
+            valores,
+            usuario
+        );
+        
+        if (result.length === 0) {
+            res.status(409).json({ erro: 'Registro desatualizado, tente novamente' });
+        }
+        else {
+            res.status(200).json({ sucesso: true });
+        }
+
+    } catch(err) {
+        return handleError(res, err, 'alterarCadastros');
+    }
+}
+
+export async function carregarCadastroPorId(req, res) {
+    const usuario = req.usuario;
+    const id = parseInt(req.params.id, 10);
+    if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ erro: 'ID inválido' });
+    try {
+        const result = await executeQueryEmpresa(
+            'SELECT ID, NOME, TELEFONE, DT_NASC, DT_CADASTRO, REGISTRO_PROFISSIONAL, TIPO, CPF, DIAGNOSTICO, UPDATED_AT ' +
+            'FROM CADASTROS WHERE ID = ?',
+            [id], usuario
+        );
+        if (!result.length) return res.status(404).json({ erro: 'Cadastro não encontrado' });
+
+        const descriptografado = result.map(r => ({
+            ...r,
+            cpf: r.cpf ? decrypt(r.cpf) : null,
+            diagnostico: r.diagnostico ? decrypt(r.diagnostico) : null,
+        }));
+        return res.status(200).json(descriptografado);
+    } catch(err) {
+        return handleError(res, err, 'carregarCadastroPorId');
+    }
 }
 
 export async function carregarCadastros(req, res) {
@@ -350,14 +738,19 @@ export async function carregarCadastros(req, res) {
             '    CADASTROS.REGISTRO_PROFISSIONAL, '+
             '    CADASTROS.TIPO, '+
             '    CADASTROS.CPF, '+
-            '    CADASTROS.DIAGNOSTICO '+
+            '    CADASTROS.DIAGNOSTICO, '+
+            '    CADASTROS.UPDATED_AT '+
             ' FROM CADASTROS '+
-            ' ORDER BY CADASTROS.ID ',
+            ' ORDER BY CADASTROS.NOME ',
             [por_pagina, offset],
             usuario
         );
-
-        return res.status(200).json(result);
+        const descriptografado = result.map(r => ({
+            ...r,
+            cpf: r.cpf ? decrypt(r.cpf) : null,
+            diagnostico: r.diagnostico ? decrypt(r.diagnostico) : null,
+        }));
+        return res.status(200).json(descriptografado);
 
     } catch(err) {
         return handleError(res, err, 'carregarCadastros');
@@ -369,7 +762,7 @@ export async function carregarEspecialidades(req, res) {
     
     try {
         const result = await executeQueryEmpresa(
-            'SELECT ID, DESCRICAO, INATIVO, ID_COR FROM ESPECIALIDADES ',
+            'SELECT ID, DESCRICAO, INATIVO, ID_COR, UPDATED_AT FROM ESPECIALIDADES ',
             [],
             usuario
         );
@@ -378,6 +771,150 @@ export async function carregarEspecialidades(req, res) {
     } catch(err) {
         return handleError(res, err, 'carregarEspecialidades')
     }
+}
+
+export async function adicionarEspecialidades(req, res) {
+    const usuario = req.usuario;    
+
+    try {
+        const result = await executeQueryEmpresa(
+            'INSERT INTO ESPECIALIDADES (DESCRICAO, INATIVO, ID_COR, UPDATED_AT) '+
+            ' VALUES (?, ?, ?, 1) ',
+            [req.body.descricao, req.body.inativo, req.body.id_cor],
+            usuario
+        );
+        await InserirHistoricoInsert(usuario, 'ESPECIALIDADES');
+        res.status(201).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'adicionarEspecialidades');
+    }          
+}
+
+export async function HistoricoDeleteEspecialidades(req, res) {
+    try {
+        const result = await getHistorico('ESPECIALIDADES', null, req.usuario);
+        res.status(200).json(result);
+    } catch(err) {
+        return handleError(res, err, 'HistoricoDeleteEspecialidades');
+    }     
+}
+
+export async function HistoricoEspecialidades(req, res) {
+    try {
+        const result = await getHistorico('ESPECIALIDADES', req.params.id, req.usuario);
+        res.status(200).json(result);    
+    } catch(err) {
+        return handleError(res, err, 'HistoricoEspecialidades');
+    }     
+}
+
+export async function alterarEspecialidades(req, res) {
+    const usuario = req.usuario;
+
+    try {
+        const campos = req.body; 
+
+        await InserirHistorico(usuario, 'ESPECIALIDADES', req.params.id, campos);
+  
+        const setClauses = [];
+        const valores = [];
+
+        const CAMPOS_PERMITIDOS = new Set([
+            'DESCRICAO', 'INATIVO', 'ID_COR'
+        ]);
+
+        for (const [campo, valor] of Object.entries(campos)) {
+            if (campo.toUpperCase() === 'UPDATED_AT') {
+                continue;
+            }                        
+            if (!CAMPOS_PERMITIDOS.has(campo.toUpperCase())) {
+                return res.status(400).json({ erro: `Campo inválido: ${campo}` });
+            }
+            setClauses.push(`${campo} = ?`);
+            valores.push(valor);
+        }
+
+        if (setClauses.length === 0) {
+            return res.status(400).json({ erro: 'Nenhum campo para atualizar' });
+        }
+
+        valores.push(req.params.id);
+        valores.push(req.body.updatedAt);
+
+        await executeQueryEmpresa(
+            `UPDATE ESPECIALIDADES SET UPDATED_AT = UPDATED_AT + 1, ${setClauses.join(', ')} WHERE ID = ? AND UPDATED_AT = ?`,
+            valores,
+            usuario
+        );
+
+        res.json({ sucesso: true });
+
+    } catch(err) {
+        return handleError(res, err, 'alterarEspecialidades');
+    }
+}
+
+export async function excluirEspecialidades(req, res) {
+    const usuario = req.usuario;
+
+    try {
+        await InserirHistoricoDelete(usuario, 'ESPECIALIDADES', req.params.id);
+        await executeQueryEmpresa(
+            'DELETE FROM ESPECIALIDADES WHERE ID = ?',
+            [req.params.id],
+            usuario        
+        );        
+        res.status(200).json({ sucesso: true });
+    } catch(err) {
+        return handleError(res, err, 'excluirEspecialidades');
+    }    
+}
+
+export async function getHistorico(tabela, id_registro, id_usuario) {
+    let result;
+    if (!id_registro) {
+        result = await executeQueryEmpresa (
+            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO FROM HISTORICO WHERE TABELA = ? "+
+            " AND TIPO = 'DELETE' ",
+            [tabela],
+            id_usuario
+        );   
+    } else if (tabela === 'PERMISSOES_USUARIOS' || tabela === 'CADASTRO_RELACAO') {
+        result = await executeQueryEmpresa (
+            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, TIPO FROM HISTORICO WHERE TABELA = ? AND ID_REGISTRO = ? ",
+            [tabela, id_registro],
+            id_usuario
+        );     
+    } 
+    else {
+        result = await executeQueryEmpresa (
+            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO FROM HISTORICO WHERE TABELA = ? AND ID_REGISTRO = ? "+
+            " AND TIPO = 'UPDATE' ",
+            [tabela, id_registro],
+            id_usuario
+        );
+    }
+
+    const camposCripto = CAMPOS_CRIPTOGRAFADOS[tabela] ?? new Set();
+
+    // Se a tabela não tem campos criptografados, retorna direto sem map
+    if (camposCripto.size === 0) return result;
+
+    return result.map(row => {
+        if (!camposCripto.has(row.campo?.toUpperCase())) return row;
+
+        return {
+            ...row,
+            valor_novo:    descriptografarSafe(row.valor_novo),
+            valor_antigo:  descriptografarSafe(row.valor_antigo),
+        };
+    });
+
+}
+
+function descriptografarSafe(valor) {
+    if (!valor) return valor;
+    try { return decrypt(valor); } catch { return null; }
 }
 
 export async function getEmpresa(codUsuario) {
