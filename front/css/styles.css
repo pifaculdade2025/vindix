@@ -522,7 +522,7 @@ kbd {
 }
 .stat:hover::before { opacity: 1; }
 .stat--accent { background: linear-gradient(135deg, var(--accent-softer), var(--surface) 60%); border-color: rgba(26,79,139,.18); }
-.stat--accent::before { opacity: 1; }
+/* stat--accent NÃO tem ::before fixo — só aparece no hover como os outros */
 .stat__label { font-family: var(--font-mono); font-size: 10px; text-transform: uppercase; letter-spacing: .18em; color: var(--fg-dim); }
 .stat__value { font-family: var(--font-display); font-weight: 400; font-size: 52px; line-height: 1; letter-spacing: -.03em; color: var(--fg); }
 .stat--accent .stat__value { color: var(--accent); }
@@ -812,7 +812,7 @@ kbd {
 /* =======================================================
    7. LAYOUT — app shell
    ======================================================= */
-.app { display: grid; grid-template-columns: 1fr; height: 100dvh; }
+.app { display: grid; grid-template-columns: 1fr; height: 100dvh; transition: grid-template-columns var(--t-md) var(--ease); }
 @media (min-width: 960px) { .app { grid-template-columns: 256px 1fr; } }
 
 .sidebar {
@@ -1484,25 +1484,7 @@ kbd {
   .detail-grid { grid-template-columns: 1fr; }
 }
 
-/* === Sidebar colapsável desktop === */
-@media (min-width: 960px) {
-  .app.sidebar--collapsed { grid-template-columns: 64px 1fr; }
-  .app.sidebar--collapsed .sidebar { width: 64px; overflow: hidden; }
-  .app.sidebar--collapsed .sidebar .nav__item span,
-  .app.sidebar--collapsed .sidebar .nav__badge,
-  .app.sidebar--collapsed .sidebar .nav__group-title,
-  .app.sidebar--collapsed .sidebar .user-chip__info,
-  .app.sidebar--collapsed .sidebar .brand__text,
-  .app.sidebar--collapsed .sidebar .theme-toggle-sidebar__label { display: none; }
-  .app.sidebar--collapsed .sidebar .nav__item { justify-content: center; gap: 0; padding: 10px; }
-  .app.sidebar--collapsed .sidebar .nav__item .icon { width: 20px; height: 20px; }
-  .app.sidebar--collapsed .sidebar .user-chip { grid-template-columns: 1fr; justify-items: center; }
-  .app.sidebar--collapsed .sidebar .user-chip .icon-btn { display: none; }
-  .app.sidebar--collapsed .sidebar__head { justify-content: center; }
-  .app.sidebar--collapsed .sidebar__close { display: none; }
-  .app.sidebar--collapsed .brand--clickable .brand__text { display: none; }
-  .app.sidebar--collapsed .theme-toggle-sidebar { justify-content: center; }
-}
+/* sidebar colapsável — ver bloco abaixo */
 
 /* === Brand não selecionável === */
 .brand--clickable { user-select: none; cursor: pointer; }
@@ -1521,35 +1503,51 @@ kbd {
 .btn--google-on { border-color: var(--success); color: var(--success); }
 .btn--google-on:hover { background: var(--success-soft); }
 
-/* === Correção stat--accent hover state (não deve manter aparência de hover fixo) === */
-.stat--accent { background: var(--surface); border-color: rgba(26,79,139,.18); }
-.stat--accent::before { opacity: 1; background: linear-gradient(90deg, var(--accent), var(--teal)); }
-.stat--accent .stat__value { color: var(--accent); }
-/* Remove o efeito de hover permanente que causava o bug visual */
-.stat:not(:hover)::before { opacity: 0; }
-.stat--accent:not(:hover)::before { opacity: 1; }
+/* stat--accent — ver definição original acima */
 
-/* === Sidebar colapsável desktop === */
+
+/* === Sidebar colapsável desktop (ÚNICO bloco oficial) === */
 @media (min-width: 960px) {
-  .app { grid-template-columns: 256px 1fr; transition: grid-template-columns var(--t-md) var(--ease); }
+  /* Largura base já definida acima — aqui só o colapsado */
+  .sidebar { transition: width var(--t-md) var(--ease); overflow: hidden; }
+
+  /* Colapsado */
   .app.sidebar--collapsed { grid-template-columns: 60px 1fr; }
-  .app.sidebar--collapsed .sidebar { width: 60px; overflow: hidden; }
-  .app.sidebar--collapsed .sidebar .nav__item span,
-  .app.sidebar--collapsed .sidebar .nav__badge,
-  .app.sidebar--collapsed .sidebar .nav__group-title,
-  .app.sidebar--collapsed .sidebar .user-chip__info,
-  .app.sidebar--collapsed .sidebar .brand__text,
-  .app.sidebar--collapsed .sidebar .theme-toggle-sidebar__label,
-  .app.sidebar--collapsed .sidebar #theme-sidebar-label { display: none; }
-  .app.sidebar--collapsed .sidebar .nav__item { justify-content: center; padding: 10px 0; }
-  .app.sidebar--collapsed .sidebar .nav__item .icon { width: 20px; height: 20px; }
-  .app.sidebar--collapsed .sidebar .user-chip { display: flex; justify-content: center; padding: 8px 0; }
-  .app.sidebar--collapsed .sidebar .user-chip .icon-btn,
-  .app.sidebar--collapsed .sidebar .user-chip__info { display: none; }
-  .app.sidebar--collapsed .sidebar__head { justify-content: center; padding: 16px 0; }
-  .app.sidebar--collapsed .sidebar .brand__text { display: none; }
-  .app.sidebar--collapsed .theme-toggle-sidebar { justify-content: center; padding: 9px 0; }
-  .sidebar { transition: width var(--t-md) var(--ease); }
+  .app.sidebar--collapsed .sidebar { width: 60px; }
+
+  .app.sidebar--collapsed .nav__item span,
+  .app.sidebar--collapsed .nav__badge,
+  .app.sidebar--collapsed .nav__group-title,
+  .app.sidebar--collapsed .user-chip__info,
+  .app.sidebar--collapsed .brand__text,
+  .app.sidebar--collapsed #theme-sidebar-label { display: none !important; }
+
+  .app.sidebar--collapsed .nav__item {
+    justify-content: center;
+    padding: 10px 0;
+    gap: 0;
+  }
+  .app.sidebar--collapsed .nav__item .icon { width: 20px; height: 20px; }
+  .app.sidebar--collapsed .nav__item--active::before { display: none; }
+
+  .app.sidebar--collapsed .user-chip {
+    display: flex;
+    justify-content: center;
+    padding: 8px 0;
+    grid-template-columns: unset;
+  }
+  .app.sidebar--collapsed .user-chip .icon-btn,
+  .app.sidebar--collapsed .user-chip__info { display: none; }
+
+  .app.sidebar--collapsed .sidebar__head {
+    justify-content: center;
+    padding: 16px 0;
+  }
+  .app.sidebar--collapsed .theme-toggle-sidebar {
+    justify-content: center;
+    padding: 9px 0;
+  }
+  .app.sidebar--collapsed .nav__group { margin-bottom: 8px; }
 }
 
 /* === Brand clicável === */
@@ -1559,7 +1557,7 @@ kbd {
 .btn--google-on { border-color: var(--success); color: var(--success); }
 .btn--google-on:hover { background: var(--success-soft); }
 
-/* === Toasts máx. largura para não cobrir tela === */
+/* === Toasts não cobrem a tela === */
 @media (min-width: 520px) { .toasts { max-width: 340px; } }
 
 /* === Responsividade extra === */
@@ -1579,4 +1577,108 @@ kbd {
   .stats { grid-template-columns: 1fr; }
   .topbar { padding: 10px 12px; }
   .content { padding: 16px 12px 40px; }
+}
+
+
+/* === Histórico — cards === */
+.hist-list { display: flex; flex-direction: column; gap: 10px; padding: 4px 0; }
+
+.hist-card {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  background: var(--surface);
+  transition: border-color var(--t-sm);
+}
+.hist-card:hover { border-color: var(--border-strong); }
+
+.hist-card__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--surface-2);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+.hist-card__campo {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--accent);
+  text-transform: uppercase;
+  background: var(--accent-softer);
+  padding: 2px 8px;
+  border-radius: var(--r-full);
+  border: 1px solid var(--accent-soft);
+}
+.hist-card__date {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--fg-dim);
+  margin-left: auto;
+}
+.hist-card__usr {
+  font-size: 11px;
+  color: var(--fg-faint);
+}
+
+/* UPDATE */
+.hist-card--update .hist-card__valores {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px 14px;
+}
+.hist-card__valor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+.hist-card__label {
+  font-family: var(--font-mono);
+  font-size: 9.5px;
+  letter-spacing: .14em;
+  text-transform: uppercase;
+  color: var(--fg-faint);
+}
+.hist-valor-ant {
+  font-size: 13px;
+  color: var(--danger);
+  background: var(--danger-soft);
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  word-break: break-word;
+  border: 1px solid rgba(220,38,38,.12);
+}
+.hist-valor-nov {
+  font-size: 13px;
+  color: var(--success);
+  background: var(--success-soft);
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  word-break: break-word;
+  border: 1px solid rgba(21,163,74,.12);
+}
+
+/* DELETE */
+.hist-card--delete { border-color: rgba(220,38,38,.2); }
+.hist-card--delete .hist-card__header { background: var(--danger-soft); border-bottom-color: rgba(220,38,38,.15); }
+.hist-card__blob {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-muted);
+  padding: 12px 14px;
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  line-height: 1.7;
+}
+
+@media (max-width: 480px) {
+  .hist-card--update .hist-card__valores { flex-direction: column; }
+  .hist-card--update .hist-card__valores svg { display: none; }
 }

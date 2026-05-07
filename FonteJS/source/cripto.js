@@ -20,4 +20,10 @@ function decrypt(stored) {
   return decipher.update(Buffer.from(encHex,'hex')) + decipher.final('utf8');
 }
 
-export {decrypt, encrypt}
+function isEncrypted(value) {
+    if (!value || typeof value !== 'string') return false;
+    const parts = value.split(':');
+    return parts.length === 3 && parts[0].length === 24 && parts[1].length === 32;
+}
+
+export {decrypt, encrypt, isEncrypted}

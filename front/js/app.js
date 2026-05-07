@@ -142,9 +142,11 @@
 
   function formatDateBR(s) {
     if (!s) return '—';
+    // Firebird pode retornar Date object
+    if (s instanceof Date) s = s.toISOString();
     if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
       const [d,t]=s.split(/[T\s]/), [Y,M,D]=d.split('-');
-      return `${D}/${M}/${Y}${t?' '+t.slice(0,5):''}`;
+      return `${D}/${M}/${Y}${t&&t!=='00:00:00'&&!t.startsWith('00:00')?' '+t.slice(0,5):''}`;
     }
     return s;
   }
@@ -238,20 +240,56 @@
     errorState(title,msg){
       return `<div class="state state--error"><div class="state__icon">${icon('alert',24)}</div><h4>${esc(title)}</h4>${msg?`<p>${esc(msg)}</p>`:''}</div>`;
     },
-    renderHistorico(container,rows){
-      if(!rows||!rows.length){container.innerHTML=this.emptyState('history','Sem alterações','Nenhuma modificação registrada.',true);return;}
-      const extra=rows[0]?.tipo!==undefined?'<th>Tipo</th>':'';
-      const trs=rows.map(r=>`<tr>
-        <td class="td-date">${esc(formatDateBR(r.dthr))}</td>
-        <td style="font-family:var(--font-mono);font-size:11px;color:var(--fg-dim)">${esc(r.campo||'—')}</td>
-        <td><span class="hist-valor-ant">${esc(r.valor_antigo??'—')}</span></td>
-        <td><span class="hist-valor-nov">${esc(r.valor_novo??'—')}</span></td>
-        <td style="font-size:11px;color:var(--fg-dim)">${esc(r.id_usuario||'—')}</td>
-        ${r.tipo!==undefined?`<td><span class="badge">${esc(r.tipo)}</span></td>`:''}
-      </tr>`).join('');
-      container.innerHTML=`<div class="table-scroll"><table class="hist-table">
-        <thead><tr><th>Data/Hora</th><th>Campo</th><th>Antes</th><th>Depois</th><th>Usuário</th>${extra}</tr></thead>
-        <tbody>${trs}</tbody></table></div>`;
+    renderHistorico(container, rows) {
+      if (!rows || !rows.length) {
+        container.innerHTML = this.emptyState('history', 'Sem alterações', 'Nenhuma modificação registrada.', true);
+        return;
+      }
+
+      const html = rows.map(r => {
+        const data   = esc(formatDateBR(r.dthr));
+        const campo  = r.campo || null;
+        const antigo = r.valor_antigo ?? null;
+        const novo   = r.valor_novo   ?? null;
+        const tipo   = r.tipo || 'UPDATE';
+        const usr    = r.nome_usuario || r.id_usuario || '—';
+
+        // DELETE — exibe valor_antigo como bloco de texto pré-formatado (multilinha)
+        if (tipo === 'DELETE' || (!campo && antigo)) {
+          return `
+          <div class="hist-card hist-card--delete">
+            <div class="hist-card__header">
+              <span class="badge badge--danger">DELETE</span>
+              <span class="hist-card__date">${data}</span>
+              <span class="hist-card__usr">por ${esc(usr)}</span>
+            </div>
+            <pre class="hist-card__blob">${esc(antigo || '—')}</pre>
+          </div>`;
+        }
+
+        // UPDATE — exibe campo, antes e depois em linha
+        return `
+        <div class="hist-card hist-card--update">
+          <div class="hist-card__header">
+            <span class="hist-card__campo">${esc(campo)}</span>
+            <span class="hist-card__date">${data}</span>
+            <span class="hist-card__usr">por ${esc(usr)}</span>
+          </div>
+          <div class="hist-card__valores">
+            <div class="hist-card__valor hist-card__valor--ant">
+              <span class="hist-card__label">Antes</span>
+              <span class="hist-valor-ant">${esc(antigo ?? '—')}</span>
+            </div>
+            <svg class="icon" style="width:14px;height:14px;color:var(--fg-faint);flex-shrink:0;margin-top:18px" aria-hidden="true"><use href="#i-arrow-right"></use></svg>
+            <div class="hist-card__valor hist-card__valor--nov">
+              <span class="hist-card__label">Depois</span>
+              <span class="hist-valor-nov">${esc(novo ?? '—')}</span>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+
+      container.innerHTML = `<div class="hist-list">${html}</div>`;
     },
   };
 
@@ -621,16 +659,14 @@
           dt_hr_sessao:dataVal.replace('T',' '),tempo_sessao:tempo+':00',resumo_sessao:resumo,
         };
         if(S.ed.consultaId){
-          body.campos={...body};body.updatedAt=S.ed.consultaUA;
-          await api.consultaPut(S.ed.consultaId,body);
-          const idx=S.consultas.findIndex(x=>x.id===S.ed.consultaId);
-          if(idx>=0)Object.assign(S.consultas[idx],{
-            data_hora:body.dt_hr_sessao,tempo_sessao:body.tempo_sessao,resumo_sessao:resumo,
-            id_terapeuta:terapeuta,id_paciente:paciente,id_especialidade:especialidade,
-            paciente:S.cadastros.find(x=>x.id===paciente)?.nome||'—',
-            terapeuta:S.cadastros.find(x=>x.id===terapeuta)?.nome||'—',
-            especialidade:S.especialidades.find(x=>x.id===especialidade)?.descricao||'—',
+          await api.consultaPut(S.ed.consultaId, {
+            updatedAt: S.ed.consultaUA,
+            campos: { id_terapeuta: terapeuta, id_especialidade: especialidade,
+                      id_paciente: paciente, dt_hr_sessao: dataVal.replace('T',' '),
+                      tempo_sessao: tempo+':00', resumo_sessao: resumo },
           });
+          // Recarrega para pegar novo updated_at
+          await pages.consultas.load({silent:true});
           ui.success('Consulta atualizada');
         }else{
           await api.consultaPost(body);
@@ -755,7 +791,7 @@
       S.ed.pessoaId=id;S.ed.pessoaUA=p.updated_at;
       $('#modal-pessoa-title').textContent='Editar — '+p.nome;
       $('#p-nome').value=p.nome||'';$('#p-tipo').value=p.tipo||'Paciente';
-      $('#p-nasc').value=(p.dt_nasc||'').slice(0,10);
+      $('#p-nasc').value=(p.dt_nasc instanceof Date ? p.dt_nasc.toISOString().slice(0,10) : (p.dt_nasc||'').slice(0,10));
       $('#p-tel').value=p.telefone||'';$('#p-cpf').value=p.cpf||'';
       $('#p-reg').value=p.registro_profissional||'';$('#p-diag').value=p.diagnostico||'';
       this._syncCampos();
@@ -876,10 +912,14 @@
           diagnostico:tipo==='Paciente'?(diag||null):null,
         };
         if(S.ed.pessoaId){
-          body.campos={...body};body.updatedAt=S.ed.pessoaUA;
-          await api.cadastroPut(S.ed.pessoaId,body);
-          const idx=S.cadastros.findIndex(c=>c.id===S.ed.pessoaId);
-          if(idx>=0)Object.assign(S.cadastros[idx],{nome,tipo,telefone:tel,dt_nasc:nasc,cpf:cpfRaw,registro_profissional:reg,diagnostico:diag});
+          await api.cadastroPut(S.ed.pessoaId, {
+            updatedAt: S.ed.pessoaUA,
+            campos: { nome, tipo, telefone: tel||null, dt_nasc: nasc||null,
+                      registro_profissional: tipo==='Terapeuta'?(reg||null):null,
+                      cpf: cpfRaw||null, diagnostico: tipo==='Paciente'?(diag||null):null },
+          });
+          // Recarrega para pegar novo updated_at
+          await pages.pessoas.load({silent:true});
           ui.success('Cadastro atualizado');
         }else{
           await api.cadastroPost(body);
@@ -1008,6 +1048,19 @@
       ui.openModal('modal-especialidade');
       this._loadHistorico(id);
     },
+    openHistorico(id){
+      // Abre o modal de edição direto na aba de histórico
+      const e=S.especialidades.find(x=>x.id===id);if(!e)return;
+      S.ed.espId=id;S.ed.espUA=e.updated_at;
+      $('#modal-esp-title').textContent='Histórico — '+e.descricao;
+      $('#esp-descricao').value=e.descricao||'';
+      $('#esp-cor').value=e.id_cor||0;$('#esp-inativo').value=e.inativo||'N';
+      const tabH=$('#modal-especialidade .modal-tab[data-tab="esp-historico"]');
+      if(tabH)tabH.style.display='';
+      gotoModalTab('modal-especialidade','esp-historico');
+      ui.openModal('modal-especialidade');
+      this._loadHistorico(id);
+    },
     async _loadHistorico(id){
       const c=$('#historico-esp-body');c.innerHTML=ui.skeleton(3);
       try{ui.renderHistorico(c,await api.espHist(id));}
@@ -1033,8 +1086,8 @@
       try{
         if(S.ed.espId){
           await api.espPut(S.ed.espId,{campos:{descricao:desc,inativo,id_cor},updatedAt:S.ed.espUA});
-          const idx=S.especialidades.findIndex(x=>x.id===S.ed.espId);
-          if(idx>=0)Object.assign(S.especialidades[idx],{descricao:desc,inativo,id_cor});
+          // Recarrega para pegar o novo updated_at — necessário para próximas edições e histórico
+          await this.load({silent:true});
           ui.success('Atualizada');
         }else{
           await api.espPost({descricao:desc,inativo:'N',id_cor});
