@@ -1,6 +1,6 @@
 import {executeQueryDBPrincipal, executeQueryEmpresa, InserirHistorico, InserirHistoricoInsert, InserirHistoricoDelete} from "./conexaoBD.js";
 import { gerarToken, limparCacheUsuario } from "./auth.js"
-import {decrypt, encrypt} from "./cripto.js";
+import {decrypt, encrypt, isEncrypted} from "./cripto.js";
 import bcrypt from "bcrypt";
 import crypto from 'crypto';
 
@@ -379,7 +379,7 @@ export async function carregarConsultas(req, res){
         );
         const descriptografado = result.map(r => ({
             ...r,
-            resumo_sessao: r.resumo_sessao ? decrypt(r.resumo_sessao) : null,
+            resumo_sessao: isEncrypted(r.resumo_sessao) ? decrypt(r.resumo_sessao) : r.resumo_sessao,
         }));
         return res.status(200).json(descriptografado);
 
@@ -680,7 +680,7 @@ export async function alterarCadastros(req, res) {
         valores.push(req.body.updatedAt);
 
         const result = await executeQueryEmpresa(
-            `UPDATE CADASTROS SET UPDATED_AT = UPDATED_AT + 1, ${setClauses.join(', ')} WHERE ID = ? AND UPDATED_AT = ?`,
+            `UPDATE CADASTROS SET UPDATED_AT = UPDATED_AT + 1, ${setClauses.join(', ')} WHERE ID = ? AND UPDATED_AT = ? RETURNING ID `,
             valores,
             usuario
         );
@@ -709,10 +709,14 @@ export async function carregarCadastroPorId(req, res) {
         );
         if (!result.length) return res.status(404).json({ erro: 'Cadastro não encontrado' });
 
+        // em carregarCadastros, dentro do .map():
         const descriptografado = result.map(r => ({
             ...r,
-            cpf: r.cpf ? decrypt(r.cpf) : null,
-            diagnostico: r.diagnostico ? decrypt(r.diagnostico) : null,
+            cpf:         isEncrypted(r.cpf)         ? decrypt(r.cpf)         : r.cpf,
+            diagnostico: isEncrypted(r.diagnostico) ? decrypt(r.diagnostico) : r.diagnostico,
+            // Normaliza Date para string ISO date apenas
+            dt_nasc:     r.dt_nasc instanceof Date  ? r.dt_nasc.toISOString().slice(0, 10) : r.dt_nasc,
+            dt_cadastro: r.dt_cadastro instanceof Date ? r.dt_cadastro.toISOString().slice(0, 10) : r.dt_cadastro,
         }));
         return res.status(200).json(descriptografado);
     } catch(err) {
@@ -745,10 +749,14 @@ export async function carregarCadastros(req, res) {
             [por_pagina, offset],
             usuario
         );
+       // em carregarCadastros, dentro do .map():
         const descriptografado = result.map(r => ({
             ...r,
-            cpf: r.cpf ? decrypt(r.cpf) : null,
-            diagnostico: r.diagnostico ? decrypt(r.diagnostico) : null,
+            cpf:         isEncrypted(r.cpf)         ? decrypt(r.cpf)         : r.cpf,
+            diagnostico: isEncrypted(r.diagnostico) ? decrypt(r.diagnostico) : r.diagnostico,
+            // Normaliza Date para string ISO date apenas
+            dt_nasc:     r.dt_nasc instanceof Date  ? r.dt_nasc.toISOString().slice(0, 10) : r.dt_nasc,
+            dt_cadastro: r.dt_cadastro instanceof Date ? r.dt_cadastro.toISOString().slice(0, 10) : r.dt_cadastro,
         }));
         return res.status(200).json(descriptografado);
 
@@ -812,21 +820,20 @@ export async function alterarEspecialidades(req, res) {
     const usuario = req.usuario;
 
     try {
-        const campos = req.body; 
+        const { updatedAt, campos } = req.body;  // ← desestrutura igual ao alterarCadastros
+
+        if (!updatedAt) {
+            return res.status(400).json({ erro: 'updatedAt é obrigatório' });
+        }
 
         await InserirHistorico(usuario, 'ESPECIALIDADES', req.params.id, campos);
-  
-        const setClauses = [];
-        const valores = [];
 
-        const CAMPOS_PERMITIDOS = new Set([
-            'DESCRICAO', 'INATIVO', 'ID_COR'
-        ]);
+        const setClauses = [];
+        const valores    = [];
+        const CAMPOS_PERMITIDOS = new Set(['DESCRICAO', 'INATIVO', 'ID_COR']);
 
         for (const [campo, valor] of Object.entries(campos)) {
-            if (campo.toUpperCase() === 'UPDATED_AT') {
-                continue;
-            }                        
+            if (campo.toUpperCase() === 'UPDATED_AT') continue;
             if (!CAMPOS_PERMITIDOS.has(campo.toUpperCase())) {
                 return res.status(400).json({ erro: `Campo inválido: ${campo}` });
             }
@@ -839,15 +846,19 @@ export async function alterarEspecialidades(req, res) {
         }
 
         valores.push(req.params.id);
-        valores.push(req.body.updatedAt);
+        valores.push(updatedAt);
 
-        await executeQueryEmpresa(
-            `UPDATE ESPECIALIDADES SET UPDATED_AT = UPDATED_AT + 1, ${setClauses.join(', ')} WHERE ID = ? AND UPDATED_AT = ?`,
+        const result = await executeQueryEmpresa(
+            `UPDATE ESPECIALIDADES SET UPDATED_AT = UPDATED_AT + 1, ${setClauses.join(', ')} WHERE ID = ? AND UPDATED_AT = ? RETURNING ID`,
             valores,
             usuario
         );
 
-        res.json({ sucesso: true });
+        if (result.length === 0) {
+            res.status(409).json({ erro: 'Registro desatualizado, tente novamente' });
+        } else {
+            res.status(200).json({ sucesso: true });
+        }
 
     } catch(err) {
         return handleError(res, err, 'alterarEspecialidades');
@@ -873,43 +884,57 @@ export async function excluirEspecialidades(req, res) {
 export async function getHistorico(tabela, id_registro, id_usuario) {
     let result;
     if (!id_registro) {
-        result = await executeQueryEmpresa (
-            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO FROM HISTORICO WHERE TABELA = ? "+
-            " AND TIPO = 'DELETE' ",
-            [tabela],
-            id_usuario
-        );   
+        result = await executeQueryEmpresa(
+            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, NOME_USUARIO FROM HISTORICO " +
+            "WHERE TABELA = ? AND TIPO = 'DELETE' ORDER BY DTHR DESC",
+            [tabela], id_usuario
+        );
     } else if (tabela === 'PERMISSOES_USUARIOS' || tabela === 'CADASTRO_RELACAO') {
-        result = await executeQueryEmpresa (
-            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, TIPO FROM HISTORICO WHERE TABELA = ? AND ID_REGISTRO = ? ",
-            [tabela, id_registro],
-            id_usuario
-        );     
-    } 
-    else {
-        result = await executeQueryEmpresa (
-            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO FROM HISTORICO WHERE TABELA = ? AND ID_REGISTRO = ? "+
-            " AND TIPO = 'UPDATE' ",
-            [tabela, id_registro],
-            id_usuario
+        result = await executeQueryEmpresa(
+            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, NOME_USUARIO, TIPO FROM HISTORICO " +
+            "WHERE TABELA = ? AND ID_REGISTRO = ? ORDER BY DTHR DESC",
+            [tabela, id_registro], id_usuario
+        );
+    } else {
+        result = await executeQueryEmpresa(
+            "SELECT VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, NOME_USUARIO FROM HISTORICO " +
+            "WHERE TABELA = ? AND ID_REGISTRO = ? AND TIPO = 'UPDATE' ORDER BY DTHR DESC",
+            [tabela, id_registro], id_usuario
         );
     }
 
+    const resolved = await Promise.all(result.map(row => resolverBlobsHistorico(row)));
+
     const camposCripto = CAMPOS_CRIPTOGRAFADOS[tabela] ?? new Set();
+    if (camposCripto.size === 0) return resolved;
 
-    // Se a tabela não tem campos criptografados, retorna direto sem map
-    if (camposCripto.size === 0) return result;
-
-    return result.map(row => {
-        if (!camposCripto.has(row.campo?.toUpperCase())) return row;
-
+    return resolved.map(row => {
+        if (!camposCripto.has((row.campo||'').toUpperCase())) return row;
         return {
             ...row,
-            valor_novo:    descriptografarSafe(row.valor_novo),
-            valor_antigo:  descriptografarSafe(row.valor_antigo),
+            valor_novo:   descriptografarSafe(row.valor_novo),
+            valor_antigo: descriptografarSafe(row.valor_antigo),
         };
     });
+}
 
+// Resolve campos BLOB que o node-firebird retorna como função
+async function resolverBlobsHistorico(row) {
+    const resolved = { ...row };
+    for (const key of ['valor_novo', 'valor_antigo']) {
+        if (typeof resolved[key] === 'function') {
+            resolved[key] = await new Promise((resolve, reject) => {
+                resolved[key]((err, _name, e) => {
+                    if (err) { resolve(null); return; }
+                    const chunks = [];
+                    e.on('data', d => chunks.push(d));
+                    e.on('end',  () => resolve(Buffer.concat(chunks).toString('utf8')));
+                    e.on('error', () => resolve(null));
+                });
+            });
+        }
+    }
+    return resolved;
 }
 
 function descriptografarSafe(valor) {

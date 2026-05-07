@@ -120,7 +120,7 @@ async function executeQueryEmpresa(sSQL, params, usuario) {
     return comTimeout(queryPromise, 15000, 'DBEmpresa');
 }
 
-async function InserirHistorico(id_usuario, tabela, id_registro, campos_novos, tipo = 'UPDATE') {
+async function InserirHistorico(id_usuario, tabela, id_registro, campos_novos) {
     const [atual] = await executeQueryEmpresa(
         `SELECT * FROM ${tabela} WHERE ID = ?`,
         [id_registro],
@@ -130,14 +130,22 @@ async function InserirHistorico(id_usuario, tabela, id_registro, campos_novos, t
     if (!atual) return;
 
     const camposCripto = CAMPOS_CRIPTOGRAFADOS[tabela] ?? new Set();
+    
 
     for (const [campo, vlNovo] of Object.entries(campos_novos)) {
         const campoUpper = campo.toUpperCase();
         if (campoUpper === 'UPDATED_AT') continue;
 
-        const vlAntigoBruto = atual[campoUpper] ?? atual[campo];
+        const vlAntigoBruto = atual[campo.toLowerCase()] ?? atual[campoUpper] ?? atual[campo];
 
-        // Descriptografa antigo para comparar em plaintext
+        // Normaliza valor para comparação — trata Date, number e string uniformemente
+        function normalizar(v) {
+            if (v == null) return '';
+            if (v instanceof Date) return v.toISOString().slice(0, 10); // só a data
+            return String(v).trim();
+        }
+
+        // Descriptografa antigo para comparar
         let vlAntigoPlain;
         try {
             vlAntigoPlain = camposCripto.has(campoUpper) && vlAntigoBruto
@@ -147,28 +155,32 @@ async function InserirHistorico(id_usuario, tabela, id_registro, campos_novos, t
             vlAntigoPlain = vlAntigoBruto;
         }
 
-        // Converte ambos para string para comparar (resolve diferença de tipos)
-        const antigoCmp = vlAntigoPlain == null ? '' : String(vlAntigoPlain).trim();
-        const novoCmp   = vlNovo        == null ? '' : String(vlNovo).trim();
+        const antigoCmp = normalizar(vlAntigoPlain);
+        const novoCmp   = normalizar(vlNovo);
 
         if (antigoCmp === novoCmp) continue;
 
-        // Grava: antigo já criptografado (como está no banco), novo criptografa se necessário
+        // Grava antigo: já criptografado vem do banco, novo: criptografa se necessário
         const vlNovoGravar = camposCripto.has(campoUpper) && vlNovo != null
             ? encrypt(String(vlNovo))
-            : vlNovo;
+            : (vlNovo instanceof Date ? vlNovo.toISOString().slice(0,10) : vlNovo);
 
+        // Valor antigo para gravar: descriptografado em plaintext, normalizado
+        const vlAntigoGravar = vlAntigoPlain instanceof Date
+            ? vlAntigoPlain.toISOString().slice(0,10)
+            : vlAntigoPlain;
+            
         await executeQueryEmpresa(
-            'INSERT INTO HISTORICO (TABELA, VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, TIPO, ID_REGISTRO) ' +
-            'VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, ?, ?, ?)',
-            [tabela, vlNovoGravar, vlAntigoBruto, campoUpper, id_usuario, tipo, id_registro],
+            `INSERT INTO HISTORICO (TABELA, VALOR_NOVO, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, TIPO, ID_REGISTRO) 
+             VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?, ?, 'UPDATE', ?)`,
+            [tabela, String(vlNovoGravar ?? ''), String(vlAntigoGravar ?? ''), campoUpper, id_usuario, parseInt(id_registro, 10)],
             id_usuario
         );
     }
 }
 
 async function InserirHistoricoInsert(id_usuario, tabela) {  
-    await executeQueryEmpresa(
+    await executeInsertHistorico(
         `INSERT INTO HISTORICO (TABELA, DTHR, ID_USUARIO, TIPO, ID_REGISTRO) 
         VALUES (?, CURRENT_TIMESTAMP, ?, 'INSERT', (SELECT GEN_ID(GEN_${tabela}_ID, 0) FROM RDB$DATABASE))`,
         [tabela, id_usuario],
@@ -177,10 +189,9 @@ async function InserirHistoricoInsert(id_usuario, tabela) {
 }
 
 async function InserirHistoricoDelete(id_usuario, tabela, id_registro) {
-    // Campos principais de cada tabela para exibir no histórico de delete
     const CAMPOS_RESUMO = {
-        CADASTROS:           ['NOME', 'TIPO', 'TELEFONE', 'CPF'],
-        CONSULTAS:           ['ID_PACIENTE', 'ID_TERAPEUTA', 'ID_ESPECIALIDADE', 'DT_HR_SESSAO'],
+        CADASTROS:           ['NOME', 'TIPO', 'TELEFONE'],
+        CONSULTAS:           ['ID_PACIENTE', 'ID_TERAPEUTA', 'DT_HR_SESSAO', 'ID_ESPECIALIDADE'],
         ESPECIALIDADES:      ['DESCRICAO', 'INATIVO'],
         PERMISSOES_USUARIOS: ['ID_USUARIO', 'ID_PERMISSAO'],
         CADASTRO_RELACAO:    ['ID_CADASTRO', 'ID_ESPECIALIDADE_TERAPEUTA'],
@@ -188,6 +199,7 @@ async function InserirHistoricoDelete(id_usuario, tabela, id_registro) {
 
     const camposCripto = CAMPOS_CRIPTOGRAFADOS[tabela] ?? new Set();
     const campos = CAMPOS_RESUMO[tabela] ?? [];
+    let valorAntigo = null;
 
     try {
         const [atual] = await executeQueryEmpresa(
@@ -197,38 +209,25 @@ async function InserirHistoricoDelete(id_usuario, tabela, id_registro) {
         );
 
         if (atual && campos.length) {
+            const partes = [];
             for (const campo of campos) {
-                const vlBruto = atual[campo.toUpperCase()] ?? atual[campo];
-                if (vlBruto == null) continue;
-
-                // Descriptografa para gravar legível no histórico de delete
-                let vlLegivel;
+                // node-firebird retorna lowercase
+                let valor = atual[campo.toLowerCase()] ?? atual[campo];
+                if (valor == null) continue;
+                if (valor instanceof Date) valor = valor.toISOString().slice(0, 10);
                 try {
-                    vlLegivel = camposCripto.has(campo.toUpperCase()) && vlBruto
-                        ? decrypt(vlBruto)
-                        : String(vlBruto ?? '');
-                } catch {
-                    vlLegivel = String(vlBruto ?? '');
-                }
-
-                await executeQueryEmpresa(
-                    'INSERT INTO HISTORICO (TABELA, VALOR_ANTIGO, DTHR, CAMPO, ID_USUARIO, TIPO, ID_REGISTRO) ' +
-                    'VALUES (?, ?, CURRENT_TIMESTAMP, ?, ?, \'DELETE\', ?)',
-                    [tabela, vlLegivel, campo, id_usuario, id_registro],
-                    id_usuario
-                );
+                    if (camposCripto.has(campo) && valor) valor = decrypt(String(valor));
+                } catch { valor = ''; }
+                partes.push(`${campo}: ${valor}`);
             }
-            return;
+            if (partes.length) valorAntigo = partes.join('\n');
         }
-    } catch {
-        // Se não conseguir ler, grava apenas o evento de delete sem dados
-    }
+    } catch { /* grava sem dados se falhar */ }
 
-    // Fallback — grava só o evento
-    await executeQueryEmpresa(
-        `INSERT INTO HISTORICO (TABELA, DTHR, ID_USUARIO, TIPO, ID_REGISTRO) 
-         VALUES (?, CURRENT_TIMESTAMP, ?, 'DELETE', ?)`,
-        [tabela, id_usuario, id_registro],
+    await executeInsertHistorico(
+        "INSERT INTO HISTORICO (TABELA, VALOR_ANTIGO, DTHR, ID_USUARIO, TIPO, ID_REGISTRO) " +
+        "VALUES (?, ?, CURRENT_TIMESTAMP, ?, 'DELETE', ?)",
+        [tabela, valorAntigo, id_usuario, id_registro],
         id_usuario
     );
 }
