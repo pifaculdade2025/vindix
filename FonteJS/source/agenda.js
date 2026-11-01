@@ -27,16 +27,11 @@ export async function conectarGoogle(req, res) {
     }
 
     try {
-        const result = await executeQueryDBPrincipal(
-            ' SELECT '+
-            '    GOOGLE_TOKEN.ID '+
-            ' FROM GOOGLE_TOKEN '+
-            '    JOIN USUARIOS ON USUARIOS.EMPRESA = GOOGLE_TOKEN.ID_EMPRESA '+
-            ' WHERE USUARIOS.ID = ?',
-            [usuario]
-        );
-
-        if (result.length > 0) {
+        // Já conectada e funcionando: precisa desconectar antes. Se a conexão gravada não vale
+        // mais (ex.: acesso removido na conta Google), ela é descartada e a nova é liberada
+        let conectada;
+        try { conectada = await verificarConexao(usuario); } catch { conectada = !!await linhaToken(usuario); }
+        if (conectada) {
             return res.status(400).json({ erro: 'Google Agenda já configurado para esta empresa' });
         }
 
@@ -48,7 +43,10 @@ export async function conectarGoogle(req, res) {
                     `&redirect_uri=${encodeURIComponent(REDIRECT_URI)}` +
                     `&response_type=code` +
                     `&scope=${encodeURIComponent('https://www.googleapis.com/auth/calendar')}` +
-                    `&access_type=offline` +       
+                    `&access_type=offline` +
+                    // Sempre pede a autorização de novo: só assim o Google entrega uma chave permanente
+                    // (refresh token) mesmo para uma conta que já tinha autorizado o Vindix antes
+                    `&prompt=consent` +
                     `&include_granted_scopes=true` +
                     `&state=${state}`;      
 
@@ -112,6 +110,8 @@ export async function callbackGoogle(req, res) {
 
         const idEmpresa = resultUsuario[0].empresa;
 
+        // Uma conexão por empresa: a nova substitui qualquer chave antiga que tenha ficado
+        await executeQueryDBPrincipal('DELETE FROM GOOGLE_TOKEN WHERE ID_EMPRESA = ?', [idEmpresa]);
         await executeQueryDBPrincipal(
             ' INSERT INTO GOOGLE_TOKEN (ACCESS_TOKEN, REFRESH_TOKEN, EXPIRA_EM, ID_EMPRESA)' +
             ' VALUES (?, ?, ?, ?)',
@@ -153,32 +153,16 @@ export async function googleConectado(usuario) {
     try { return !!await getToken(usuario); } catch { return true; }
 }
 
-async function buscarToken(usuario) {
-    const result = await executeQueryDBPrincipal(
-        ' SELECT ' +
-        '    GOOGLE_TOKEN.ID, ' +
-        '    GOOGLE_TOKEN.REFRESH_TOKEN, ' +
-        '    GOOGLE_TOKEN.ACCESS_TOKEN, ' +
-        '    GOOGLE_TOKEN.EXPIRA_EM ' +
-        ' FROM GOOGLE_TOKEN ' +
-        ' JOIN USUARIOS ON USUARIOS.EMPRESA = GOOGLE_TOKEN.ID_EMPRESA ' +
-        ' WHERE USUARIOS.ID = ?',
-        [usuario]
-    );
+// Conexão que o Google não aceita mais (acesso removido na conta Google, chave revogada ou perdida):
+// sai do banco, para a empresa aparecer como desconectada e poder conectar de novo
+async function descartarConexao(idToken, motivo) {
+    console.warn(`[Google Agenda] conexão descartada: ${motivo}`);
+    await executeQueryDBPrincipal('DELETE FROM GOOGLE_TOKEN WHERE ID = ?', [idToken]);
+    esquecerTokens();
+}
 
-    // Empresa sem Google Agenda conectado
-    if (result.length === 0) return null;
-
-    const tokenRow = result[0];
-    const agora    = new Date();
-    const expiraEm = new Date(tokenRow.expira_em);
-
-    // se ainda não expirou, retorna direto
-    if (agora < expiraEm) {
-        return decrypt(tokenRow.access_token);
-    }
-
-    // expirou — renova usando o refresh_token
+// Renova a chave de acesso com a chave permanente; null se o Google não reconhece mais a conexão
+async function renovarToken(tokenRow) {
     const resultGoogle = await fetch('https://oauth2.googleapis.com/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -191,18 +175,53 @@ async function buscarToken(usuario) {
     });
     const tokenData = await resultGoogle.json();
 
+    if (tokenData.error === 'invalid_grant') {
+        await descartarConexao(tokenRow.id, tokenData.error_description ?? tokenData.error);
+        return null;
+    }
     if (tokenData.error) {
         throw new Error('Erro ao renovar token: ' + tokenData.error_description);
     }
 
     const novaExpiracao = new Date(Date.now() + (tokenData.expires_in - 300) * 1000);
-
     await executeQueryDBPrincipal(
         'UPDATE GOOGLE_TOKEN SET ACCESS_TOKEN = ?, EXPIRA_EM = ? WHERE ID = ?',
         [encrypt(tokenData.access_token), novaExpiracao, tokenRow.id]
     );
-
     return tokenData.access_token;
+}
+
+async function linhaToken(usuario) {
+    const [linha] = await executeQueryDBPrincipal(
+        ' SELECT GOOGLE_TOKEN.ID, GOOGLE_TOKEN.REFRESH_TOKEN, GOOGLE_TOKEN.ACCESS_TOKEN, GOOGLE_TOKEN.EXPIRA_EM' +
+        ' FROM GOOGLE_TOKEN JOIN USUARIOS ON USUARIOS.EMPRESA = GOOGLE_TOKEN.ID_EMPRESA WHERE USUARIOS.ID = ?',
+        [usuario]
+    );
+    return linha ?? null;
+}
+
+// Confere com o Google se a conexão da empresa ainda vale (renovando a chave se preciso).
+// Se não valer mais, ela é descartada e a empresa pode conectar de novo
+export async function verificarConexao(usuario) {
+    const tokenRow = await linhaToken(usuario);
+    if (!tokenRow) return false;
+    const valido = token => fetch('https://oauth2.googleapis.com/tokeninfo?access_token=' + encodeURIComponent(token)).then(r => r.ok);
+    const atual = new Date() < new Date(tokenRow.expira_em) ? decrypt(tokenRow.access_token) : await renovarToken(tokenRow);
+    if (!atual) return false;
+    if (await valido(atual)) return true;
+    // Chave de acesso recusada: renova uma vez (se a chave permanente também não vale, a conexão é descartada)
+    esquecerTokens();
+    const nova = await renovarToken(tokenRow);
+    return !!nova && await valido(nova);
+}
+
+async function buscarToken(usuario) {
+    const tokenRow = await linhaToken(usuario);
+    // Empresa sem Google Agenda conectado
+    if (!tokenRow) return null;
+    // Ainda válida: usa direto; vencida: renova (null se o Google não aceitar mais a conexão)
+    if (new Date() < new Date(tokenRow.expira_em)) return decrypt(tokenRow.access_token);
+    return renovarToken(tokenRow);
 }
 
 const URL_EVENTOS = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
@@ -372,13 +391,11 @@ export async function desconectarGoogle(req, res) {
 export async function statusGoogle(req, res) {
     const usuario = req.usuario;
     try {
-        const result = await executeQueryDBPrincipal(
-            `SELECT GOOGLE_TOKEN.ID FROM GOOGLE_TOKEN
-             JOIN USUARIOS ON USUARIOS.EMPRESA = GOOGLE_TOKEN.ID_EMPRESA
-             WHERE USUARIOS.ID = ?`,
-            [usuario]
-        );
-        res.json({ conectado: result.length > 0 });
+        let conectado;
+        // Testa com o Google; se ele estiver fora do ar, vale o que está gravado
+        try { conectado = await verificarConexao(usuario); }
+        catch (err) { console.warn('[statusGoogle] Google indisponível:', err.message); conectado = !!await linhaToken(usuario); }
+        res.json({ conectado });
     } catch (err) {
         return funcoes.handleError(res, err, 'statusGoogle');
     }
