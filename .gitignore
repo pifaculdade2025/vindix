@@ -12,6 +12,7 @@
 # ...exceto os modelos de estrutura (sem dados), usados para criar bancos novos
 !FonteJS/scripts/modelos/*.fbk
 backups/
+BaseDados/
 
 # Dependências: instaladas em cada servidor com "npm ci" (o bcrypt tem binário por sistema)
 node_modules/
