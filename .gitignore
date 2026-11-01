@@ -9,10 +9,11 @@
 *.fdb
 *.FBK
 *.fbk
-# ...exceto os modelos de estrutura (sem dados), usados para criar bancos novos
-!FonteJS/scripts/modelos/*.fbk
 backups/
 BaseDados/
+
+# Programa de administração e criação dos bancos: fica só na máquina
+FonteJS/scripts/
 
 # Dependências: instaladas em cada servidor com "npm ci" (o bcrypt tem binário por sistema)
 node_modules/

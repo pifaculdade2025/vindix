@@ -48,8 +48,9 @@ Bancos de produção (os atuais são de teste — comece do zero):
         o registro no banco principal e o usuário VINDIX-<EMPRESA> com senha temporária
         (aparece só nessa hora e é trocada no primeiro login).
 [ ] Logos das clínicas: opção 3 do programa. A pasta das logos precisa ser legível pelo usuário do serviço do Node.
-[ ] Estrutura do banco só muda por script de migração (pasta scripts). Depois de uma migração nova,
-    atualize os modelos (scripts/modelos/principal.fbk e empresa.fbk) com "gbak -b -m" de um banco migrado.
+[ ] Mudança na estrutura do banco: aplique nos bancos (com um script feito para isso, testado antes num
+    banco de teste) e depois atualize os modelos (scripts/modelos/principal.fbk e empresa.fbk) com
+    "gbak -b -m" de um banco já alterado: é deles que saem os bancos novos.
 
 
 3. ARQUIVO .env (FonteJS/.env) E CHAVES
@@ -99,6 +100,8 @@ Bancos de produção (os atuais são de teste — comece do zero):
 
 6. INSTALAÇÃO E SERVIÇO DO NODE
 -------------------------------
+[ ] (!) A pasta FonteJS/scripts (programa de administração e modelos dos bancos) NÃO vai no Git:
+        copie-a à mão para o servidor, junto com o projeto.
 [ ] (!) Copiar o projeto (sem node_modules, que não vai no Git) e instalar as dependências do sistema:
             npm ci --omit=dev
         O bcrypt usa um binário diferente em cada sistema: sempre instale no próprio servidor.
