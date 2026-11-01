@@ -1,0 +1,6 @@
+# Scripts do Linux precisam de fim de linha LF; os do Windows, CRLF
+*.sh   text eol=lf
+*.cmd  text eol=crlf
+*.bat  text eol=crlf
+# Modelos de estrutura do banco
+*.fbk  binary

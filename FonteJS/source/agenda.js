@@ -4,6 +4,7 @@ import {decrypt, encrypt} from "./cripto.js";
 import 'dotenv/config';
 import * as funcoes from "./funcoes.js";
 import { criarNonce, consumirNonce } from './nonces.js';
+import crypto from 'crypto';
 
 const CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 if (!CLIENT_ID) {
@@ -22,7 +23,7 @@ export async function conectarGoogle(req, res) {
     const usuario = req.usuario; 
 
     if (!usuario) {
-        return res.status(400).json({ erro: 'usuario não informado' })
+        return res.status(400).json({ erro: 'Usuário não informado' })
     }
 
     try {
@@ -51,7 +52,8 @@ export async function conectarGoogle(req, res) {
                     `&include_granted_scopes=true` +
                     `&state=${state}`;      
 
-        res.redirect(url);
+        // O front abre a URL num popup (um redirect não levaria o token de autenticação)
+        res.json({ url });
 
     } catch(err) {
         return funcoes.handleError(res, err, 'conectarGoogle');
@@ -71,7 +73,7 @@ export async function callbackGoogle(req, res) {
         usuario = consumirNonce(nonce);
         if (!usuario || !Number.isInteger(usuario) || usuario <= 0) throw new Error();
     } catch {
-        return res.status(400).send('State inválido ou expirado');
+        return res.status(400).send('Autorização inválida ou expirada. Tente conectar de novo.');
     }
 
     try {
@@ -90,11 +92,11 @@ export async function callbackGoogle(req, res) {
 
         if (tokenData.error) {
             console.error('[callbackGoogle] Erro Google:', tokenData.error_description);
-            return res.status(500).send('Erro ao conectar com Google. Tente novamente.');
+            return res.status(500).send('Erro ao conectar com o Google. Tente novamente.');
             // return res.status(500).send('Erro Google: ' + tokenData.error_description);
         }
         if (!tokenData.refresh_token) {
-            return res.status(500).send('Refresh token não retornado. Revogue o acesso no Google e tente novamente.');
+            return res.status(500).send('O Google não liberou o acesso permanente. Remova o acesso do Vindix na sua conta Google e conecte de novo.');
         }
 
         const expiraEm = new Date(Date.now() + (tokenData.expires_in - 300) * 1000);
@@ -115,10 +117,13 @@ export async function callbackGoogle(req, res) {
             ' VALUES (?, ?, ?, ?)',
             [encrypt(tokenData.access_token), encrypt(tokenData.refresh_token), expiraEm, idEmpresa]
         );
+        esquecerTokens();
 
+        const nonceScript = crypto.randomBytes(16).toString('base64');
+        res.set('Content-Security-Policy', `default-src 'none'; script-src 'nonce-${nonceScript}'`);
         res.send(`
-            <html><body><script>
-                alert('Google Calendar conectado com sucesso!');
+            <html><body><script nonce="${nonceScript}">
+                alert('Google Agenda conectado com sucesso!');
                 window.close();
             </script></body></html>
         `);
@@ -128,7 +133,27 @@ export async function callbackGoogle(req, res) {
     }
 }
 
-async function getToken(usuario) {
+// Várias sincronizações seguidas (uma série inteira) usam o mesmo token: a primeira busca
+// (e renova, se preciso) e as outras esperam por ela; o resultado vale por pouco tempo
+const TOKEN_CACHE_MS = 30 * 1000;
+const tokenPorUsuario = new Map();
+function getToken(usuario) {
+    const guardado = tokenPorUsuario.get(usuario);
+    if (guardado && guardado.expira > Date.now()) return guardado.promessa;
+    const promessa = buscarToken(usuario);
+    if (tokenPorUsuario.size > 5000) tokenPorUsuario.clear();
+    tokenPorUsuario.set(usuario, { promessa, expira: Date.now() + TOKEN_CACHE_MS });
+    promessa.catch(() => tokenPorUsuario.delete(usuario));
+    return promessa;
+}
+// Ao conectar ou desconectar o Google, ninguém pode continuar com o token antigo
+export function esquecerTokens() { tokenPorUsuario.clear(); }
+// Empresa com o Google conectado? (na dúvida, responde que sim e a sincronização decide)
+export async function googleConectado(usuario) {
+    try { return !!await getToken(usuario); } catch { return true; }
+}
+
+async function buscarToken(usuario) {
     const result = await executeQueryDBPrincipal(
         ' SELECT ' +
         '    GOOGLE_TOKEN.ID, ' +
@@ -141,9 +166,8 @@ async function getToken(usuario) {
         [usuario]
     );
 
-    if (result.length === 0) {
-        throw new Error('Google Agenda não configurado para este usuário');
-    }
+    // Empresa sem Google Agenda conectado
+    if (result.length === 0) return null;
 
     const tokenRow = result[0];
     const agora    = new Date();
@@ -181,85 +205,121 @@ async function getToken(usuario) {
     return tokenData.access_token;
 }
 
-export async function criarEventoGoogle(req, res) {
-    const usuario = req.usuario;
-    const idConsulta = parseInt(req.body.consulta, 10);
+const URL_EVENTOS = 'https://www.googleapis.com/calendar/v3/calendars/primary/events';
 
-    if (!Number.isInteger(idConsulta) || idConsulta <= 0) {
-        return res.status(400).json({ erro: 'ID de consulta inválido' });
+// O Google limita quantas alterações seguidas a agenda aceita (403 rateLimitExceeded / 429):
+// espera um pouco e tenta de novo, com espera maior a cada tentativa
+const ESPERAS_LIMITE_MS = [400, 1000, 2000, 4000];
+async function fetchGoogle(url, opcoes) {
+    for (let tentativa = 0; ; tentativa++) {
+        const resp = await fetch(url, opcoes);
+        const limite = resp.status === 429 || (resp.status === 403 && /rate ?limit/i.test(await resp.clone().text()));
+        if (!limite || tentativa >= ESPERAS_LIMITE_MS.length) return resp;
+        await new Promise(ok => setTimeout(ok, ESPERAS_LIMITE_MS[tentativa] + Math.random() * 300));
     }
+}
+const FUSO_AGENDA = process.env.FUSO_AGENDA ?? 'America/Sao_Paulo';
 
+// Resultado da sincronização com o Google Agenda: 'sincronizado' | 'nao_conectado' | 'falhou'.
+// Nunca lança erro: o agendamento vale mesmo se o Google estiver fora do ar.
+export async function sincronizarAgendamento(usuario, idAgendamento) {
     try {
         const token = await getToken(usuario);
+        if (!token) return 'nao_conectado';
 
-        const result = await executeQueryEmpresa(
-            `SELECT 
-                CONSULTAS.DT_HR_SESSAO,
-                DATEADD(
-                    (
-                        EXTRACT(hour FROM CONSULTAS.TEMPO_SESSAO) * 3600 + 
-                        EXTRACT(minute FROM CONSULTAS.TEMPO_SESSAO) * 60 + 
-                        EXTRACT(second FROM CONSULTAS.TEMPO_SESSAO)
-                    ) 
-                    SECOND TO CONSULTAS.DT_HR_SESSAO
-                ) AS DT_HR_FIM,
-                CONSULTAS.TEMPO_SESSAO,
-                CONSULTAS.ENVIADO_GOOGLE,
-                ESPECIALIDADES.ID_COR,
-                CADASTROS.NOME || ' - ' || ESPECIALIDADES.DESCRICAO AS TITULO
-             FROM CONSULTAS
-                JOIN CADASTROS ON CADASTROS.ID = CONSULTAS.ID_TERAPEUTA
-                JOIN ESPECIALIDADES ON ESPECIALIDADES.ID = CONSULTAS.ID_ESPECIALIDADE
-             WHERE CONSULTAS.ID = ?`,
-            [idConsulta], 
+        // Realizado: o evento passa para o horário real da sessão (data e duração informadas ao registrar)
+        const [ag] = await executeQueryEmpresa(
+            `SELECT A.ID, A.STATUS, A.GOOGLE_EVENT_ID,
+                    COALESCE(C.DT_HR_SESSAO, A.DT_HR_AGENDADA) DT_HR_AGENDADA,
+                    DATEADD(DATEDIFF(SECOND FROM TIME '00:00:00' TO COALESCE(C.TEMPO_SESSAO, A.TEMPO_PREVISTO)) SECOND
+                            TO COALESCE(C.DT_HR_SESSAO, A.DT_HR_AGENDADA)) DT_HR_FIM,
+                    E.ID_COR, T.NOME || ' - ' || E.DESCRICAO TITULO
+             FROM AGENDAMENTOS A
+                JOIN CADASTROS T ON T.ID = A.ID_TERAPEUTA
+                JOIN ESPECIALIDADES E ON E.ID = A.ID_ESPECIALIDADE
+                LEFT JOIN CONSULTAS C ON C.ID_AGENDAMENTO = A.ID AND C.EXCLUIDO_EM IS NULL AND A.STATUS = 'REALIZADO'
+             WHERE A.ID = ?`,
+            [idAgendamento],
             usuario
         );
+        if (!ag) return 'falhou';
+        if (ag.status === 'CANCELADO') return removerEventoAgendamento(usuario, idAgendamento);
+        // Sessão realizada que nunca foi ao Google: não cria evento só para registrar o passado
+        if (ag.status === 'REALIZADO' && !ag.google_event_id) return 'sincronizado';
 
-        if (result.length === 0) {
-            return res.status(404).json({ erro: 'Consulta não encontrada' });
-        }
-
-        const consulta = result[0];
-
-        if (consulta.enviado_google === 'S') {
-            return res.status(400).json({ erro: 'Consulta já enviada ao Google Agenda' });
-        }
-
+        // Título só com terapeuta e especialidade: o nome do paciente não vai para o Google (LGPD)
         const evento = {
-            summary: consulta.titulo,
-            start:   { dateTime: new Date(consulta.dt_hr_sessao).toISOString() },
-            end:     { dateTime: new Date(consulta.dt_hr_fim).toISOString() }
+            summary: ag.titulo,
+            start: { dateTime: ag.dt_hr_agendada, timeZone: FUSO_AGENDA },
+            end:   { dateTime: ag.dt_hr_fim,      timeZone: FUSO_AGENDA },
+            ...(ag.id_cor > 0 ? { colorId: String(ag.id_cor) } : {}),
         };
+        const opcoes = metodo => ({
+            method: metodo,
+            headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+            body: JSON.stringify(evento),
+        });
 
-        if (consulta.id_cor > 0) {
-            evento.colorId = String(consulta.id_cor);
+        let resp = null;
+        if (ag.google_event_id) {
+            resp = await fetchGoogle(`${URL_EVENTOS}/${encodeURIComponent(ag.google_event_id)}`, opcoes('PATCH'));
+            // Evento apagado direto no Google: cria de novo
+            if (resp.status === 404 || resp.status === 410) resp = null;
+        }
+        if (!resp) resp = await fetchGoogle(URL_EVENTOS, opcoes('POST'));
+
+        const dados = await resp.json();
+        if (!resp.ok) {
+            console.error('[sincronizarAgendamento] Erro Google:', dados.error?.message);
+            return 'falhou';
         }
 
-        const resultGoogle = await fetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type':  'application/json'
-            },
-            body: JSON.stringify(evento)
-        });
-        const googleResp = await resultGoogle.json();
+        if (dados.id !== ag.google_event_id) {
+            await executeQueryEmpresa(
+                'UPDATE AGENDAMENTOS SET GOOGLE_EVENT_ID = ? WHERE ID = ?',
+                [dados.id, ag.id],
+                usuario
+            );
+        }
+        return 'sincronizado';
+    } catch (err) {
+        console.error('[sincronizarAgendamento]', err);
+        return 'falhou';
+    }
+}
 
-        if (googleResp.error) {
-            console.error('[callbackGoogle] Erro Google:', googleResp.error.message);
-            return res.status(500).send('Erro ao conectar com Google. Tente novamente.');
-            // return res.status(500).json({ erro: 'Erro Google: ' + googleResp.error.message });
+// Remove do Google Agenda o evento de um agendamento cancelado
+export async function removerEventoAgendamento(usuario, idAgendamento) {
+    try {
+        const [ag] = await executeQueryEmpresa(
+            'SELECT GOOGLE_EVENT_ID FROM AGENDAMENTOS WHERE ID = ?',
+            [idAgendamento],
+            usuario
+        );
+        if (!ag?.google_event_id) return 'sincronizado';
+
+        const token = await getToken(usuario);
+        if (!token) return 'nao_conectado';
+
+        const resp = await fetchGoogle(`${URL_EVENTOS}/${encodeURIComponent(ag.google_event_id)}`, {
+            method: 'DELETE',
+            headers: { 'Authorization': 'Bearer ' + token },
+        });
+        // 404/410: o evento já não existia no Google
+        if (!resp.ok && resp.status !== 404 && resp.status !== 410) {
+            console.error('[removerEventoAgendamento] Erro Google:', resp.status);
+            return 'falhou';
         }
 
         await executeQueryEmpresa(
-            `UPDATE CONSULTAS SET ENVIADO_GOOGLE = 'S' WHERE ID = ?`,
-            [idConsulta], usuario
+            'UPDATE AGENDAMENTOS SET GOOGLE_EVENT_ID = NULL WHERE ID = ?',
+            [idAgendamento],
+            usuario
         );
-
-        res.json({ sucesso: true });
-
+        return 'sincronizado';
     } catch (err) {
-        return funcoes.handleError(res, err, 'criarEventoGoogle');
+        console.error('[removerEventoAgendamento]', err);
+        return 'falhou';
     }
 }
 
@@ -280,10 +340,12 @@ export async function desconectarGoogle(req, res) {
 
         // Tentar revogar no Google (não crítico se falhar)
         try {
-            const token = await getToken(usuario);//decrypt(result[0].access_token);
-            await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
-                method: 'POST'
-            });
+            const token = await getToken(usuario);
+            if (token) {
+                await fetch(`https://oauth2.googleapis.com/revoke?token=${token}`, {
+                    method: 'POST'
+                });
+            }
         } catch {
             // Log mas não bloqueia — deleta localmente de qualquer jeito
             console.warn('[desconectarGoogle] Falha ao revogar token no Google');
@@ -293,10 +355,11 @@ export async function desconectarGoogle(req, res) {
             'DELETE FROM GOOGLE_TOKEN WHERE ID = ?',
             [result[0].id]
         );
+        esquecerTokens();
 
-        // Zerar flag nas consultas já enviadas 
+        // Os eventos deixam de estar ligados a uma conta conectada
         await executeQueryEmpresa(
-          "UPDATE CONSULTAS SET ENVIADO_GOOGLE = 'N' WHERE ENVIADO_GOOGLE = 'S'",
+          'UPDATE AGENDAMENTOS SET GOOGLE_EVENT_ID = NULL WHERE GOOGLE_EVENT_ID IS NOT NULL',
           [], usuario
         );
 

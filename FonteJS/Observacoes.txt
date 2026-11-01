@@ -16,6 +16,9 @@ Tabela permissões DB principal:
 1? - Permissões da tabela CADASTROS
 2? - Permissões da tabela CONSULTAS
 3? - Permissões da tabela ESPECIALIDADES
+4? - Permissões da tabela AGENDAMENTOS (44 = cancelar; só os agendamentos vão para o Google Agenda)
+50 - Resumo (indicadores e gráficos): permissão especial, única (não tem as variações ?1 a ?5)
+6? - Permissões do FINANCEIRO (63 = alterar preço das especialidades e repasse dos profissionais)
 
 
 OBS: 

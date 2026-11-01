@@ -2,16 +2,18 @@
   "name": "fontejs",
   "version": "1.0.0",
   "type": "module",
-  "description": "",
+  "description": "Vindix: gestão de clínicas multidisciplinares (Windows e Linux)",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node source/server.js",
+    "admin": "node scripts/empresas.mjs"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
     "bcrypt": "^6.0.0",
+    "compression": "^1.8.1",
     "cors": "^2.8.6",
     "dotenv": "^17.4.0",
     "express": "^5.2.1",
@@ -23,5 +25,8 @@
     "node-fetch": "^3.3.2",
     "node-firebird": "^2.0.2",
     "toobusy-js": "^0.5.1"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

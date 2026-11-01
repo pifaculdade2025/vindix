@@ -1,1 +1,23 @@
+# Segredos (o .env e as cópias que o programa de administração faz ao trocar chaves)
 .env
+.env.*
+**/.env
+**/.env.*
+
+# Bancos de dados e backups: dados de pacientes nunca vão para o Git
+*.FDB
+*.fdb
+*.FBK
+*.fbk
+# ...exceto os modelos de estrutura (sem dados), usados para criar bancos novos
+!FonteJS/scripts/modelos/*.fbk
+backups/
+
+# Dependências: instaladas em cada servidor com "npm ci" (o bcrypt tem binário por sistema)
+node_modules/
+
+# Editor e sistema
+.vscode/
+*.log
+Thumbs.db
+.DS_Store

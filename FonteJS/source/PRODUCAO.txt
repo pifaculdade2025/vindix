@@ -1,0 +1,177 @@
+VINDIX — O QUE FAZER PARA COLOCAR EM PRODUÇÃO
+==============================================
+
+Marque cada item ao concluir. Os comandos rodam na pasta FonteJS, salvo quando indicado.
+Itens marcados com (!) são obrigatórios antes de receber dados reais de pacientes.
+
+O sistema e o programa de administração rodam em Windows e em Linux. No Linux, use
+"./scripts/empresas.sh" (ou "node scripts/empresas.mjs") no lugar de "scripts\empresas.cmd".
+
+
+1. MÁQUINA DO SERVIDOR
+----------------------
+[ ] (!) Sistema atualizado, com firewall ativo (no Linux: ufw ou firewalld).
+[ ] (!) Disco dos bancos (.FDB) criptografado: BitLocker no Windows; LUKS no Linux
+        (protege os dados se a máquina ou o disco forem roubados).
+[ ] Acesso remoto (RDP/SSH) só com chave ou senha forte; no Linux, SSH sem login de root por senha.
+[ ] Node.js na versão LTS atual (20 ou mais nova).
+[ ] Relógio e fuso horário corretos (America/Sao_Paulo). Agendamentos e o Google Agenda dependem disso.
+        Linux: sudo timedatectl set-timezone America/Sao_Paulo
+
+
+2. FIREBIRD (BANCO DE DADOS)
+----------------------------
+[ ] (!) Firebird 5 também no servidor de produção. Os modelos de estrutura (scripts/modelos/*.fbk) e os
+        backups são do Firebird 5; versões mais antigas (como o firebird3.0 dos repositórios do Ubuntu)
+        não conseguem restaurá-los. No Linux, instale o pacote oficial de firebirdsql.org
+        (fica em /opt/firebird; o programa de administração já procura o gbak lá).
+[ ] (!) Senha do SYSDBA forte e diferente de qualquer outra senha do sistema.
+        Atenção: os scripts de backup (BKP_BD) e o BackupRestore.bat usam a senha padrão "masterkey"
+        escrita no código; ajuste para a senha real (de preferência lida de variável de ambiente).
+[ ] (!) Firebird aceitando conexões só da própria máquina: no firebird.conf deixe
+            RemoteBindAddress = 127.0.0.1
+        e reinicie o serviço. Windows: C:\Program Files\Firebird\Firebird_5_0\firebird.conf
+        Linux: /opt/firebird/firebird.conf  (sudo systemctl restart firebird)
+[ ] (!) Porta 3050 fechada no firewall para acessos de fora.
+[ ] A conexão entre o sistema e o banco já vai criptografada (o Firebird exige por padrão). Se um dia
+    o banco ficar em outra máquina, libere a 3050 só para o IP do servidor do Vindix.
+[ ] Pasta dos .FDB com permissão só para o usuário do serviço do Firebird e administradores
+    (Linux: dono "firebird", permissão 660).
+
+Bancos de produção (os atuais são de teste — comece do zero):
+[ ] (!) Banco principal novo:  programa de administração, opção 6 "Criar o banco principal".
+        Ele cria o VINDIX.FDB vazio (só com a lista de permissões) e grava o caminho no .env.
+[ ] (!) Usuário do banco da aplicação (VINDIX_APP, com o mínimo de permissões), servidor parado:
+            node scripts/criar-usuario-bd-aplicacao.mjs
+        Gera a senha sozinho e grava no .env. Rode de novo depois de criar a primeira empresa.
+[ ] (!) Cada clínica: programa de administração, opção 1 "Criar empresa". Cria o banco da empresa,
+        o registro no banco principal e o usuário VINDIX-<EMPRESA> com senha temporária
+        (aparece só nessa hora e é trocada no primeiro login).
+[ ] Logos das clínicas: opção 3 do programa. A pasta das logos precisa ser legível pelo usuário do serviço do Node.
+[ ] Estrutura do banco só muda por script de migração (pasta scripts). Depois de uma migração nova,
+    atualize os modelos (scripts/modelos/principal.fbk e empresa.fbk) com "gbak -b -m" de um banco migrado.
+
+
+3. ARQUIVO .env (FonteJS/.env) E CHAVES
+---------------------------------------
+[ ] (!) JWT_SECRET novo, só para produção: programa de administração, opção 8.
+        Trocar derruba os logins abertos, mas não altera nenhum dado. Vale ao reiniciar o servidor.
+[ ] (!) TOKEN_ENC_KEY novo, só para produção, ANTES de cadastrar o primeiro paciente:
+            node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+        (64 caracteres). Com dados já gravados, use a opção 7 do programa: ela faz backup de todos os
+        bancos, abre cada dado criptografado com a chave atual, grava de novo com uma chave nova e só
+        então troca a chave no .env. Se for interrompida, é só rodar a opção 7 de novo (ela continua
+        de onde parou). Servidor parado durante a troca (o programa confere).
+[ ] (!) Cópia do TOKEN_ENC_KEY guardada fora do servidor, em lugar seguro (cofre de senhas).
+        Sem ela, CPF, diagnósticos, evoluções e metas ficam ilegíveis para sempre, inclusive nos backups.
+        Depois de uma troca de chave, a chave antiga fica em FonteJS/.env.antes-troca-chave-<data>:
+        ela é necessária para abrir os backups anteriores à troca. Guarde junto com eles ou apague tudo.
+[ ] (!) ALLOWED_ORIGINS só com o endereço final do sistema (ex.: https://clinica.seudominio.com.br).
+[ ] (!) Tirar MIGRACAO_USER_BD e MIGRACAO_SENHA_BD (senha do SYSDBA) do .env do servidor. Passe só na
+        hora de rodar o programa de administração e feche o terminal depois:
+            Windows (PowerShell):  $env:MIGRACAO_USER_BD='SYSDBA'; $env:MIGRACAO_SENHA_BD='...'; node scripts/empresas.mjs
+            Linux:                 MIGRACAO_USER_BD=SYSDBA MIGRACAO_SENHA_BD='...' ./scripts/empresas.sh
+[ ] (!) .env legível só pelo usuário do serviço do Node e administradores (Linux: chmod 600 .env).
+[ ] O .env e as cópias .env.* nunca vão para o Git (já estão no .gitignore) nem para backups sem criptografia.
+[ ] Se o gbak não estiver no lugar padrão, informe FIREBIRD_BIN no .env (pasta do Firebird ou o próprio gbak).
+
+
+4. HTTPS (QUANDO FOR COLOCADO)
+------------------------------
+[ ] Certificado válido (Let's Encrypt, por exemplo). Duas formas:
+        a) direto no Node: HTTPS_CERT e HTTPS_KEY no .env (caminhos dos arquivos .pem); ou
+        b) proxy reverso na frente (Nginx, Caddy, IIS): informe TRUST_PROXY=1 no .env.
+           Sem o TRUST_PROXY, todos os acessos parecem vir do proxy e o limite de tentativas de
+           login bloquearia a clínica inteira depois de 10 senhas erradas.
+[ ] Com HTTPS ativo, o servidor já liga sozinho o HSTS e o "upgrade-insecure-requests".
+[ ] Porta HTTP (sem S) fechada ou redirecionando para HTTPS.
+[ ] Atualizar ALLOWED_ORIGINS e GOOGLE_REDIRECT_URI para os endereços https.
+
+
+5. GOOGLE AGENDA
+----------------
+[ ] (!) No Google Cloud Console, só o endereço de produção como URL de redirecionamento autorizada
+        (o mesmo do GOOGLE_REDIRECT_URI).
+[ ] App OAuth publicado (fora do modo "teste"), com a política de privacidade preenchida.
+[ ] GOOGLE_CLIENT_SECRET só no .env de produção; se já foi compartilhado em algum lugar, gerar um novo.
+[ ] Lembrete: os eventos enviados ao Google levam só profissional e especialidade, nunca o nome do paciente.
+
+
+6. INSTALAÇÃO E SERVIÇO DO NODE
+-------------------------------
+[ ] (!) Copiar o projeto (sem node_modules, que não vai no Git) e instalar as dependências do sistema:
+            npm ci --omit=dev
+        O bcrypt usa um binário diferente em cada sistema: sempre instale no próprio servidor.
+[ ] Variável NODE_ENV=production.
+[ ] Rodar como serviço, com reinício automático se cair e usuário sem privilégios de administrador:
+        Windows: NSSM ou node-windows.
+        Linux (systemd), exemplo /etc/systemd/system/vindix.service:
+            [Unit]
+            Description=Vindix
+            After=network.target firebird.service
+            [Service]
+            User=vindix
+            WorkingDirectory=/opt/vindix/FonteJS
+            Environment=NODE_ENV=production
+            ExecStart=/usr/bin/node source/server.js
+            Restart=always
+            [Install]
+            WantedBy=multi-user.target
+        depois:  sudo systemctl enable --now vindix
+[ ] Saída do servidor gravada em log, com rotação (Linux: journalctl já guarda; Windows: o NSSM grava em arquivo).
+[ ] O frontend (pasta front) é servido pelo próprio Node. A pasta front precisa ir junto, ao lado de FonteJS.
+
+
+7. BACKUP (pasta BKP_BD)
+------------------------
+[ ] (!) Backup diário de TODOS os bancos (principal + um por empresa), de madrugada.
+        Windows: BKP_BD/BD_windows.py no Agendador de Tarefas.  Linux: BKP_BD/BD_linux.py no cron.
+        Ajuste nos scripts a lista de bancos, a senha do SYSDBA e o caminho do gbak (no Linux com o
+        Firebird 5 oficial: /opt/firebird/bin/gbak).
+[ ] (!) Cópia dos backups fora da máquina (o BD_linux.py já envia ao Google Drive pelo rclone), criptografada.
+[ ] (!) Testar a restauração (gbak -c) pelo menos uma vez por mês, num banco separado, e abrir no sistema.
+[ ] Guardar backups por um período definido (ex.: 30 diários + 12 mensais).
+[ ] O TOKEN_ENC_KEY fica guardado separado dos backups (item 3): backup + chave juntos = dados expostos.
+
+
+8. CONTAS E ACESSOS
+-------------------
+[ ] (!) Primeiro login de cada clínica com o usuário VINDIX-<EMPRESA>; a senha temporária é trocada na hora.
+[ ] Criar um usuário para cada pessoa (nunca compartilhar login) e dar só as permissões necessárias.
+[ ] Profissionais vinculados ao próprio cadastro (veem só os próprios pacientes e atendimentos).
+[ ] Inativar na hora o usuário de quem sair da clínica.
+[ ] Orientar a equipe: não salvar a senha em computadores compartilhados e sair do sistema ao terminar.
+
+
+9. LGPD E OPERAÇÃO
+------------------
+[ ] Termo de uso e política de privacidade para as clínicas (dados de saúde são dados sensíveis).
+[ ] Definir por quanto tempo os dados ficam guardados e quem pode ver o histórico de acessos
+    (as leituras de prontuário já ficam registradas no histórico).
+[ ] Definir um responsável por incidentes (quem é avisado e o que fazer se houver vazamento).
+[ ] Acompanhar no log as tentativas de login com erro em sequência (sinal de ataque).
+
+
+10. MANUTENÇÃO CONTÍNUA
+-----------------------
+[ ] Todo mês: npm audit (na pasta FonteJS) e, se aparecer algo, npm audit fix (sem --force) e testar.
+[ ] Atualizar Node.js e Firebird quando saírem correções de segurança.
+[ ] Antes de cada atualização do sistema: backup dos bancos e do .env.
+[ ] Trocar o JWT_SECRET (opção 8) se houver suspeita de vazamento do .env; trocar o TOKEN_ENC_KEY
+    (opção 7) se houver suspeita de vazamento da chave.
+
+
+PROGRAMA DE ADMINISTRAÇÃO (resumo das opções)
+---------------------------------------------
+  1. Criar empresa                       5. Criar o usuário master de uma empresa existente
+  2. Alterar o caminho do banco          6. Criar o banco principal (VINDIX.FDB)
+  3. Alterar o caminho da logo           7. Trocar a chave de criptografia (TOKEN_ENC_KEY)
+  4. Alterar o banco principal (.env)    8. Trocar a chave dos logins (JWT_SECRET)
+Caminhos de banco e chaves nunca são mostrados na tela.
+
+
+PENDÊNCIAS FUTURAS (RECOMENDADAS)
+---------------------------------
+[ ] Verificação em duas etapas para administradores.
+[ ] Saída automática após um tempo parado (hoje o login vale 1 hora).
+[ ] Aviso automático (e-mail/mensagem) quando houver muitas tentativas de login com erro.

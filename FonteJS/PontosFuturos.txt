@@ -1,5 +1,0 @@
-- Criptografar RESUMO_SESSAO
-
-- Alterou usuário Troca o token_version dele
-
-- trocar data do update por integer - ultima atualização

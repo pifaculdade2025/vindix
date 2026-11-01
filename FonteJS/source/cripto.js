@@ -3,22 +3,34 @@ import crypto from 'crypto';
 if (!process.env.TOKEN_ENC_KEY) {
   throw new Error("TOKEN_ENC_KEY não definido");
 }
-const ENC_KEY = Buffer.from(process.env.TOKEN_ENC_KEY, 'hex'); 
 
-function encrypt(text) {
-  const iv = crypto.randomBytes(12);
-  const cipher = crypto.createCipheriv('aes-256-gcm', ENC_KEY, iv);
-  const enc = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
-  const tag = cipher.getAuthTag();
-  return iv.toString('hex') + ':' + tag.toString('hex') + ':' + enc.toString('hex');
+// Cifra AES-256-GCM com uma chave (64 caracteres hexadecimais). O sistema usa a do .env;
+// a troca de chave (programa de administração) usa duas ao mesmo tempo: a antiga e a nova
+function criarCifra(chaveHex) {
+  if (!/^[0-9a-f]{64}$/i.test(String(chaveHex ?? ''))) {
+    throw new Error('Chave de criptografia inválida: são 64 caracteres hexadecimais');
+  }
+  const chave = Buffer.from(chaveHex, 'hex');
+
+  function encrypt(text) {
+    const iv = crypto.randomBytes(12);
+    const cipher = crypto.createCipheriv('aes-256-gcm', chave, iv);
+    const enc = Buffer.concat([cipher.update(text, 'utf8'), cipher.final()]);
+    const tag = cipher.getAuthTag();
+    return iv.toString('hex') + ':' + tag.toString('hex') + ':' + enc.toString('hex');
+  }
+
+  function decrypt(stored) {
+    const [ivHex, tagHex, encHex] = stored.split(':');
+    const decipher = crypto.createDecipheriv('aes-256-gcm', chave, Buffer.from(ivHex,'hex'));
+    decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
+    return decipher.update(Buffer.from(encHex,'hex')) + decipher.final('utf8');
+  }
+
+  return { encrypt, decrypt };
 }
 
-function decrypt(stored) {
-  const [ivHex, tagHex, encHex] = stored.split(':');
-  const decipher = crypto.createDecipheriv('aes-256-gcm', ENC_KEY, Buffer.from(ivHex,'hex'));
-  decipher.setAuthTag(Buffer.from(tagHex, 'hex'));
-  return decipher.update(Buffer.from(encHex,'hex')) + decipher.final('utf8');
-}
+const { encrypt, decrypt } = criarCifra(process.env.TOKEN_ENC_KEY);
 
 function isEncrypted(value) {
     if (!value || typeof value !== 'string') return false;
@@ -26,4 +38,4 @@ function isEncrypted(value) {
     return parts.length === 3 && parts[0].length === 24 && parts[1].length === 32;
 }
 
-export {decrypt, encrypt, isEncrypted}
+export {decrypt, encrypt, isEncrypted, criarCifra}
