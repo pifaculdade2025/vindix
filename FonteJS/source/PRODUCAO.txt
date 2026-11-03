@@ -8,6 +8,12 @@ O sistema e o programa de administração rodam em Windows e em Linux. No Linux,
 "./scripts/empresas.sh" (ou "node scripts/empresas.mjs") no lugar de "scripts\empresas.cmd".
 
 
+0. REPOSITÓRIO
+--------------
+[ ] (!) Deixar o repositório do GitHub PRIVADO antes de ir para produção: hoje ele é público.
+[ ] Pedir ao suporte do GitHub a remoção do pull request nº 1, que ainda guarda bancos antigos de teste.
+
+
 1. MÁQUINA DO SERVIDOR
 ----------------------
 [ ] (!) Sistema atualizado, com firewall ativo (no Linux: ufw ou firewalld).
@@ -39,15 +45,15 @@ O sistema e o programa de administração rodam em Windows e em Linux. No Linux,
     (Linux: dono "firebird", permissão 660).
 
 Bancos de produção (os atuais são de teste — comece do zero):
-[ ] (!) Banco principal novo:  programa de administração, opção 6 "Criar o banco principal".
+[ ] (!) Banco principal novo:  programa de administração, opção 1 "Criar o banco principal".
         Ele cria o VINDIX.FDB vazio (só com a lista de permissões) e grava o caminho no .env.
 [ ] (!) Usuário do banco da aplicação (VINDIX_APP, com o mínimo de permissões), servidor parado:
             node scripts/criar-usuario-bd-aplicacao.mjs
         Gera a senha sozinho e grava no .env. Rode de novo depois de criar a primeira empresa.
-[ ] (!) Cada clínica: programa de administração, opção 1 "Criar empresa". Cria o banco da empresa,
+[ ] (!) Cada clínica: programa de administração, opção 3 "Criar empresa". Cria o banco da empresa,
         o registro no banco principal e o usuário VINDIX-<EMPRESA> com senha temporária
         (aparece só nessa hora e é trocada no primeiro login).
-[ ] Logos das clínicas: opção 3 do programa. A pasta das logos precisa ser legível pelo usuário do serviço do Node.
+[ ] Logos das clínicas: opção 5 do programa. A pasta das logos precisa ser legível pelo usuário do serviço do Node.
 [ ] Mudança na estrutura do banco: aplique nos bancos (com um script feito para isso, testado antes num
     banco de teste) e depois atualize os modelos (scripts/modelos/principal.fbk e empresa.fbk) com
     "gbak -b -m" de um banco já alterado: é deles que saem os bancos novos.
@@ -55,13 +61,13 @@ Bancos de produção (os atuais são de teste — comece do zero):
 
 3. ARQUIVO .env (FonteJS/.env) E CHAVES
 ---------------------------------------
-[ ] (!) JWT_SECRET novo, só para produção: programa de administração, opção 8.
+[ ] (!) JWT_SECRET novo, só para produção: programa de administração, opção 9.
         Trocar derruba os logins abertos, mas não altera nenhum dado. Vale ao reiniciar o servidor.
 [ ] (!) TOKEN_ENC_KEY novo, só para produção, ANTES de cadastrar o primeiro paciente:
             node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-        (64 caracteres). Com dados já gravados, use a opção 7 do programa: ela faz backup de todos os
+        (64 caracteres). Com dados já gravados, use a opção 8 do programa: ela faz backup de todos os
         bancos, abre cada dado criptografado com a chave atual, grava de novo com uma chave nova e só
-        então troca a chave no .env. Se for interrompida, é só rodar a opção 7 de novo (ela continua
+        então troca a chave no .env. Se for interrompida, é só rodar a opção 8 de novo (ela continua
         de onde parou). Servidor parado durante a troca (o programa confere).
 [ ] (!) Cópia do TOKEN_ENC_KEY guardada fora do servidor, em lugar seguro (cofre de senhas).
         Sem ela, CPF, diagnósticos, evoluções e metas ficam ilegíveis para sempre, inclusive nos backups.
@@ -98,7 +104,19 @@ Bancos de produção (os atuais são de teste — comece do zero):
 [ ] Lembrete: os eventos enviados ao Google levam só profissional e especialidade, nunca o nome do paciente.
 
 
-6. INSTALAÇÃO E SERVIÇO DO NODE
+6. E-MAIL (RECUPERAÇÃO DE SENHA)
+--------------------------------
+[ ] (!) Senha de app da conta adm.vindix@gmail.com em SENHA_EMAIL no .env (verificação em duas etapas ligada).
+[ ] (!) Testar um pedido de "Esqueci minha senha" no servidor de produção, do começo ao fim.
+[ ] (!) Só liberar para uso real com o HTTPS ativo: sem ele, o link de recuperação trafega aberto na rede.
+    Nenhuma mudança no código: o link usa os endereços de ALLOWED_ORIGINS.
+[ ] Cadastrar o e-mail de cada usuário. Sem e-mail, só o administrador redefine a senha dele.
+[ ] O usuário master não recupera por e-mail: a senha dele é trocada pela opção 7 do programa de administração.
+[ ] Se o volume crescer ou os e-mails caírem no spam: trocar de serviço informando no .env
+    EMAIL_HOST, EMAIL_PORTA, EMAIL_USUARIO e SENHA_EMAIL (o Gmail aceita cerca de 500 envios por dia).
+
+
+7. INSTALAÇÃO E SERVIÇO DO NODE
 -------------------------------
 [ ] (!) A pasta FonteJS/scripts (programa de administração e modelos dos bancos) NÃO vai no Git:
         copie-a à mão para o servidor, junto com o projeto.
@@ -125,7 +143,7 @@ Bancos de produção (os atuais são de teste — comece do zero):
 [ ] O frontend (pasta front) é servido pelo próprio Node. A pasta front precisa ir junto, ao lado de FonteJS.
 
 
-7. BACKUP (pasta BKP_BD)
+8. BACKUP (pasta BKP_BD)
 ------------------------
 [ ] (!) Backup diário de TODOS os bancos (principal + um por empresa), de madrugada.
         Windows: BKP_BD/BD_windows.py no Agendador de Tarefas.  Linux: BKP_BD/BD_linux.py no cron.
@@ -137,7 +155,7 @@ Bancos de produção (os atuais são de teste — comece do zero):
 [ ] O TOKEN_ENC_KEY fica guardado separado dos backups (item 3): backup + chave juntos = dados expostos.
 
 
-8. CONTAS E ACESSOS
+9. CONTAS E ACESSOS
 -------------------
 [ ] (!) Primeiro login de cada clínica com o usuário VINDIX-<EMPRESA>; a senha temporária é trocada na hora.
 [ ] Criar um usuário para cada pessoa (nunca compartilhar login) e dar só as permissões necessárias.
@@ -146,7 +164,7 @@ Bancos de produção (os atuais são de teste — comece do zero):
 [ ] Orientar a equipe: não salvar a senha em computadores compartilhados e sair do sistema ao terminar.
 
 
-9. LGPD E OPERAÇÃO
+10. LGPD E OPERAÇÃO
 ------------------
 [ ] Termo de uso e política de privacidade para as clínicas (dados de saúde são dados sensíveis).
 [ ] Definir por quanto tempo os dados ficam guardados e quem pode ver o histórico de acessos
@@ -155,21 +173,26 @@ Bancos de produção (os atuais são de teste — comece do zero):
 [ ] Acompanhar no log as tentativas de login com erro em sequência (sinal de ataque).
 
 
-10. MANUTENÇÃO CONTÍNUA
+11. MANUTENÇÃO CONTÍNUA
 -----------------------
 [ ] Todo mês: npm audit (na pasta FonteJS) e, se aparecer algo, npm audit fix (sem --force) e testar.
 [ ] Atualizar Node.js e Firebird quando saírem correções de segurança.
 [ ] Antes de cada atualização do sistema: backup dos bancos e do .env.
-[ ] Trocar o JWT_SECRET (opção 8) se houver suspeita de vazamento do .env; trocar o TOKEN_ENC_KEY
-    (opção 7) se houver suspeita de vazamento da chave.
+[ ] Trocar o JWT_SECRET (opção 9) se houver suspeita de vazamento do .env; trocar o TOKEN_ENC_KEY
+    (opção 8) se houver suspeita de vazamento da chave.
 
 
 PROGRAMA DE ADMINISTRAÇÃO (resumo das opções)
 ---------------------------------------------
-  1. Criar empresa                       5. Criar o usuário master de uma empresa existente
-  2. Alterar o caminho do banco          6. Criar o banco principal (VINDIX.FDB)
-  3. Alterar o caminho da logo           7. Trocar a chave de criptografia (TOKEN_ENC_KEY)
-  4. Alterar o banco principal (.env)    8. Trocar a chave dos logins (JWT_SECRET)
+  Banco principal      1. Criar o banco principal (VINDIX.FDB)
+                       2. Alterar o caminho do banco principal (.env)
+  Empresas             3. Criar empresa
+                       4. Alterar o caminho do banco de uma empresa
+                       5. Alterar o caminho da logo de uma empresa
+  Usuário master       6. Criar o usuário master de uma empresa
+                       7. Alterar a senha do usuário master (gera uma temporária, trocada no próximo login)
+  Chaves do sistema    8. Trocar a chave de criptografia (TOKEN_ENC_KEY)
+                       9. Trocar a chave dos logins (JWT_SECRET)
 Caminhos de banco e chaves nunca são mostrados na tela.
 
 

@@ -24,6 +24,7 @@
     "lru-cache": "^11.2.7",
     "node-fetch": "^3.3.2",
     "node-firebird": "^2.0.2",
+    "nodemailer": "^10.3.1",
     "toobusy-js": "^0.5.1"
   },
   "engines": {

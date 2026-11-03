@@ -334,8 +334,9 @@
   const ui = {
     toast(type,title,msg) {
       const box=$('#toasts'); if(!box)return;
-      const toasts=$$('.toast',box);
-      if(toasts.length>=CONFIG.MAX_TOASTS) { toasts[0].classList.add('toast--closing'); setTimeout(()=>toasts[0].remove(),150); }
+      // No máximo MAX_TOASTS na tela: o novo entra e os mais antigos saem na hora (mesmo os que já estavam fechando)
+      const toasts=[...$$('.toast',box)];
+      toasts.slice(0,Math.max(0,toasts.length-CONFIG.MAX_TOASTS+1)).forEach(x=>x.remove());
       const ico=({success:'check',error:'alert',warning:'alert',info:'info'})[type]||'info';
       const t=document.createElement('div');
       t.className=`toast toast--${type}`;t.setAttribute('role','status');
@@ -782,6 +783,8 @@
       $$('.nav__item').forEach(b=>b.addEventListener('click',()=>this.goto(b.dataset.page)));
       $('#btn-open-sidebar').addEventListener('click',()=>this.toggleSidebar());
       $('#btn-close-sidebar').addEventListener('click',()=>this.closeSidebarMobile());
+      $('#btn-retrair-menu').addEventListener('click',()=>this.retrairMenu(document.documentElement.dataset.menu!=='retraido'));
+      this.mostrarMenuRetraido();
       $('#backdrop-sidebar').addEventListener('click',()=>this.closeSidebarMobile());
       $('#tabbar').addEventListener('click',e=>{
         const b=e.target.closest('[data-page],[data-menu]');if(!b)return;
@@ -826,6 +829,16 @@
       };
       $('#tabbar').innerHTML=atalhos.map(item).join('')+(permitidas.length>atalhos.length
         ?`<button type="button" class="tabbar__item" data-menu="1"><span class="nav__icone">${icon('menu')}</span>Menu</button>`:'');
+    },
+    // Desktop: menu só com os ícones; a escolha fica guardada neste navegador
+    retrairMenu(retrair){
+      if(retrair)document.documentElement.dataset.menu='retraido';else delete document.documentElement.dataset.menu;
+      try{if(retrair)localStorage.setItem('vindix:menu','retraido');else localStorage.removeItem('vindix:menu');}catch{}
+      this.mostrarMenuRetraido();
+    },
+    mostrarMenuRetraido(){
+      const retraido=document.documentElement.dataset.menu==='retraido',btn=$('#btn-retrair-menu'),texto=retraido?'Expandir menu':'Retrair menu';
+      btn.title=texto;btn.setAttribute('aria-label',texto);btn.setAttribute('aria-expanded',String(!retraido));
     },
     toggleSidebar(){
       const aberto=!$('#sidebar').classList.contains('is-open');
@@ -2559,7 +2572,7 @@
     async openNew({base=null,permissoes=[]}={}){
       if(!S.todasPerms.length)await this.loadPerms({silent:true});
       S.ed.usuarioId=null;S.ed.usuarioUA=null;
-      $('#u-nome').value='';$('#u-login').value='';
+      $('#u-nome').value='';$('#u-login').value='';$('#u-email').value='';
       // Permissões ficam só na tela até o usuário ser criado
       S.ed.perms={original:new Set(),atual:new Set(permissoes),travado:false};
       this._abrirModal(base?`Duplicar — ${base.nome}`:'Novo usuário',null);
@@ -2579,7 +2592,8 @@
       await Promise.all([this.load({silent:true}),S.todasPerms.length?null:this.loadPerms({silent:true})]);
       const u=S.usuarios.find(x=>x.id===id);if(!u){ui.warning('Usuário não encontrado','A lista foi atualizada.');return;}
       S.ed.usuarioId=id;S.ed.usuarioUA=u.updated_at;
-      $('#u-nome').value=u.nome||'';
+      $('#u-nome').value=u.nome||'';$('#u-email').value=u.email||'';
+      S.ed.usuarioEmail=u.email||'';
       S.ed.perms={original:new Set(),atual:new Set(),travado:true,carregando:true};
       this._abrirModal('Editar — '+u.nome,u);
       this._loadHistPerms(id);
@@ -2672,6 +2686,9 @@
       const nome=$('#u-nome').value.trim();
       const nomeInvalido=!nome||nome.length>100;
       fieldErr($('#u-nome'),nomeInvalido);if(nomeInvalido){gotoModalTab('modal-usuario','usr-dados');return;}
+      const email=$('#u-email').value.trim().toLowerCase();
+      const emailInvalido=!!email&&!/^[a-z0-9._%+'-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(email);
+      fieldErr($('#u-email'),emailInvalido);if(emailInvalido){gotoModalTab('modal-usuario','usr-dados');return;}
       const btn=$('#btn-salvar-usuario');
       if(!S.ed.usuarioId){
         const login=$('#u-login').value.trim();
@@ -2685,7 +2702,7 @@
         btn.setAttribute('aria-busy','true');
         try{
           // Tudo vai junto: o back valida login, permissões e profissional antes de criar
-          const r=await api.usuarioPost({login,nome,permissoes,idCadastro:this._profissionalEscolhido()});
+          const r=await api.usuarioPost({login,nome,email,permissoes,idCadastro:this._profissionalEscolhido()});
           S.ed.perms=null;
           ui.closeModal('modal-usuario');
           await this.load({silent:true});
@@ -2699,6 +2716,7 @@
       btn.setAttribute('aria-busy','true');
       try{
         await api.usuarioNome({usuario:S.ed.usuarioId,novonome:nome,updatedAt:S.ed.usuarioUA});
+        if(email!==S.ed.usuarioEmail)await api.put(`${EP.usuarios}/${S.ed.usuarioId}/email`,{email});
         await this._salvarProfissional(S.ed.usuarioId);
         const perms=this._permsAlteradas();
         if(perms)await api.put(`${EP.usuarios}/${S.ed.usuarioId}/permissoes`,{ids:perms});
@@ -3546,6 +3564,7 @@
 
   /* BOOT */
   function boot(){
+    recuperarSenha.lerLink();
     document.body.dataset.loading='false';
     // Sem limite, o campo de data aceita anos com 5 ou 6 dígitos
     $$('input[type="date"]').forEach(i=>{if(!i.max)i.max='2099-12-31';if(!i.min)i.min='1900-01-01';});
@@ -3568,8 +3587,81 @@
       if(e.key==='Escape'&&maisAcoes.aberto){maisAcoes.fechar(true);return;}
       if(e.key==='Escape'&&!$('.modal.is-open[data-bloqueado]')){ui.closeAllModals();nav.closeSidebarMobile();}
     });
-    maisAcoes.init();fotoPerfil.init();travaRolagem.init();
+    maisAcoes.init();fotoPerfil.init();travaRolagem.init();recuperarSenha.init();
   }
+
+  // Recuperação de senha pelo e-mail. O código vem depois do # do link (não chega a servidores nem a logs)
+  // e sai do endereço assim que a página abre
+  const recuperarSenha = {
+    codigo:null,
+    init(){
+      $('#btn-esqueci-senha').addEventListener('click',()=>this.abrirPedido());
+      $('#form-esqueci').addEventListener('submit',e=>this.pedir(e));
+      $('#form-nova-senha').addEventListener('submit',e=>this.salvar(e));
+      $('#btn-nova-senha-fechar').addEventListener('click',()=>this.fecharNovaSenha());
+      if(this.doLink)this.abrirLink(this.doLink);
+    },
+    // Antes de tudo: logado, o sistema abre a tela inicial e troca o endereço (o link se perderia)
+    lerLink(){
+      const m=/^#recuperar=([0-9a-f]{64})$/.exec(location.hash);
+      if(!m)return;
+      history.replaceState(null,'',location.pathname+location.search);
+      this.doLink=m[1];
+    },
+    abrirPedido(){
+      $('#esq-login').value=$('#input-user').value.trim();fieldErr($('#esq-login'),false);
+      $('#form-esqueci').hidden=false;$('#esqueci-enviado').hidden=true;
+      ui.openModal('modal-esqueci');
+    },
+    async pedir(e){
+      e.preventDefault();
+      const usuario=$('#esq-login').value.trim();
+      fieldErr($('#esq-login'),!usuario);if(!usuario)return;
+      const btn=$('#btn-esqueci-enviar');btn.setAttribute('aria-busy','true');
+      try{
+        const r=await api.post('/recuperar-senha',{usuario});
+        const destino=typeof r.email==='string'?r.email:'';
+        $('#esqueci-resultado').textContent=r.jaEnviado?`Já enviamos um link para ${destino} há poucos minutos.`
+          :r.enviado?`Enviamos um link para ${destino}. Ele vale por 30 minutos.`
+          :'Não encontramos um e-mail cadastrado para este login. Entre em contato com o administrador da clínica para redefinir a sua senha.';
+        $('#esqueci-dica').textContent=r.jaEnviado?'Veja a caixa de entrada e o spam. Depois de 2 minutos, dá para pedir outro link.'
+          :r.enviado?'Não chegou? Veja a caixa de spam. Se o endereço estiver errado, fale com o administrador da clínica.':'';
+        $('#esqueci-dica').hidden=!r.enviado;
+        $('#form-esqueci').hidden=true;$('#esqueci-enviado').hidden=false;
+      }catch(err){ui.error('Não foi possível enviar',err.message);}
+      finally{btn.removeAttribute('aria-busy');}
+    },
+    async abrirLink(codigo){
+      let valido=false;
+      try{valido=(await api.post('/recuperar-senha/validar',{codigo})).valido===true;}
+      catch(err){ui.error('Não foi possível abrir o link',err.message);return;}
+      if(!valido){ui.warning('Link inválido','Este link venceu ou já foi usado. Peça a recuperação de novo.');return;}
+      this.codigo=codigo;
+      ['rec-senha','rec-senha2'].forEach(id=>{$('#'+id).value='';fieldErr($('#'+id),false);});
+      $('#modal-nova-senha').dataset.bloqueado='1';
+      ui.openModal('modal-nova-senha');
+    },
+    fecharNovaSenha(){
+      this.codigo=null;delete $('#modal-nova-senha').dataset.bloqueado;
+      ['rec-senha','rec-senha2'].forEach(id=>{$('#'+id).value='';});
+      ui.closeModal('modal-nova-senha');
+    },
+    async salvar(e){
+      e.preventDefault();
+      const senha=$('#rec-senha').value,repete=$('#rec-senha2').value;
+      const fraca=senha.length<8||senha.length>60||!/[A-Za-z]/.test(senha)||!/\d/.test(senha);
+      fieldErr($('#rec-senha'),fraca);fieldErr($('#rec-senha2'),!fraca&&senha!==repete);
+      if(fraca||senha!==repete)return;
+      const btn=$('#btn-nova-senha');btn.setAttribute('aria-busy','true');
+      try{
+        await api.post('/recuperar-senha/confirmar',{codigo:this.codigo,novaSenha:senha});
+        this.fecharNovaSenha();
+        if(S.token)auth.logout({silent:true});
+        ui.success('Senha alterada','Entre com a senha nova.');
+      }catch(err){ui.error('Não foi possível alterar',err.message);}
+      finally{btn.removeAttribute('aria-busy');}
+    },
+  };
 
   // Com o menu do celular ou um modal aberto, a página de trás não rola (no iPhone, overflow:hidden
   // sozinho não basta: o body fica fixo e a posição da rolagem é devolvida ao fechar)

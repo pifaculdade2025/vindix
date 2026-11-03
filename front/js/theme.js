@@ -5,6 +5,8 @@
   try{salvo=localStorage.getItem('vindix:theme');}catch(e){}
   var sistemaEscuro=window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches;
   document.documentElement.setAttribute('data-theme',salvo||(sistemaEscuro?'dark':'light'));
+  // Menu retraído: aplicado antes de desenhar a página, para ele não abrir e fechar ao carregar
+  try{if(localStorage.getItem('vindix:menu')==='retraido')document.documentElement.setAttribute('data-menu','retraido');}catch(e){}
 
   function aplicar(tema){
     document.documentElement.setAttribute('data-theme',tema);

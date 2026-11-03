@@ -3,7 +3,7 @@ import { gerarToken, limparCacheUsuario, carregarPermissoes as permissoesDoUsuar
 import { sincronizarAgendamento, removerEventoAgendamento, googleConectado } from "./agenda.js";
 import { metaNoEscopo, esperaNoEscopo, validarAvaliacoes, salvarAvaliacoes, cobrarSessao, metasDaSessao, metasDoPeriodo, exclusivoFinanceiro, conferirSaidaSessao, saldoPaciente } from "./clinica.js";
 import {decrypt, encrypt, isEncrypted} from "./cripto.js";
-import { validarDados, senhaInvalida, paraId, lerCripto, CAMPOS_CRIPTOGRAFADOS, TABELAS_EXCLUSAO_LOGICA } from "./regras.js";
+import { validarDados, senhaInvalida, limparEmail, paraId, lerCripto, CAMPOS_CRIPTOGRAFADOS, TABELAS_EXCLUSAO_LOGICA } from "./regras.js";
 import bcrypt from "bcrypt";
 import crypto from 'crypto';
 import path from 'path';
@@ -192,7 +192,8 @@ export function paginacao(req, { padrao = 50, max = 100 } = {}) {
 export function filtroBusca(termo, colunas) {
     const t = typeof termo === 'string' ? termo.trim().slice(0, 100) : '';
     if (!t) return { sql: '', params: [] };
-    return { sql: ` AND (${colunas.map(c => `${c} CONTAINING ?`).join(' OR ')})`, params: colunas.map(() => t) };
+    // CAST: sem ele, o parâmetro herda o tamanho da coluna e um texto maior que ela (ex.: telefone) dá erro
+    return { sql: ` AND (${colunas.map(c => `${c} CONTAINING CAST(? AS VARCHAR(100))`).join(' OR ')})`, params: colunas.map(() => t) };
 }
 
 export function enviarPagina(res, linhas, total) {
@@ -474,7 +475,7 @@ export async function carregarUsuarios(req, res) {
     try {
         const [result, vinculos] = await Promise.all([
             executeQueryDBPrincipal(
-                'SELECT ID, LOGIN, NOME, UPDATED_AT, INATIVO, CAST(CASE WHEN FOTO IS NULL THEN 0 ELSE FOTO_VERSAO END AS INTEGER) FOTO_VERSAO FROM USUARIOS WHERE MASTER = 0 AND EMPRESA = (SELECT EMPRESA FROM USUARIOS U WHERE U.ID = ?) ORDER BY NOME',
+                'SELECT ID, LOGIN, NOME, EMAIL, UPDATED_AT, INATIVO, CAST(CASE WHEN FOTO IS NULL THEN 0 ELSE FOTO_VERSAO END AS INTEGER) FOTO_VERSAO FROM USUARIOS WHERE MASTER = 0 AND EMPRESA = (SELECT EMPRESA FROM USUARIOS U WHERE U.ID = ?) ORDER BY NOME',
                 [usuario]
             ),
             executeQueryEmpresa(
@@ -486,6 +487,7 @@ export async function carregarUsuarios(req, res) {
 
         return res.status(200).json(result.map(u => ({
             ...u,
+            email:             u.email ? decrypt(String(u.email)) : null,
             inativo:           u.inativo === 1,
             profissional_id:   porUsuario.get(u.id)?.id ?? null,
             profissional_nome: porUsuario.get(u.id)?.nome ?? null,
@@ -529,6 +531,8 @@ async function validarProfissionalDoUsuario(req, idCadastro, alvo) {
 export async function cadastrarUsuario(req, res) {
     const usuario = req.usuario;
     const { login, nome, permissoes = [], idCadastro: enviado = null } = req.body ?? {};
+    const email = limparEmail(req.body?.email);
+    if (email === null) return res.status(400).json({ erro: 'E-mail inválido' });
 
     if (typeof login !== 'string' || typeof nome !== 'string') {
         return res.status(400).json({ erro: 'Login e nome são obrigatórios' });
@@ -571,9 +575,9 @@ export async function cadastrarUsuario(req, res) {
         const temporaria = gerarSenhaTemporaria();
         const hash = await bcrypt.hash(temporaria, SALT_ROUNDS);
         const novo = await executeQueryDBPrincipal(
-            'INSERT INTO USUARIOS (LOGIN, SENHA, EMPRESA, NOME, TOKEN_VERSION, UPDATED_AT, TROCAR_SENHA, INATIVO) ' +
-            'VALUES (?, ?, ?, ?, 0, 1, 1, 0) RETURNING ID',
-            [login, hash, empresa, nome.trim()]
+            'INSERT INTO USUARIOS (LOGIN, SENHA, EMPRESA, NOME, EMAIL, TOKEN_VERSION, UPDATED_AT, TROCAR_SENHA, INATIVO) ' +
+            'VALUES (?, ?, ?, ?, ?, 0, 1, 1, 0) RETURNING ID',
+            [login, hash, empresa, nome.trim(), email ? encrypt(email) : null]
         );
 
         // Restos de um usuário antigo com o mesmo ID não podem passar para o novo
@@ -865,6 +869,27 @@ export async function HistoricoPermissoesUsuario(req, res) {
     }
 }
 
+// Trocar o e-mail cancela qualquer link de recuperação pendente. Mesmas travas da gestão de usuários:
+// quem não é administrador não altera um administrador (senão recuperaria a senha dele pelo próprio e-mail)
+export async function alterarEmailUsuario(req, res) {
+    const alvo = paraId(req.params.id);
+    if (!alvo) return res.status(400).json({ erro: 'ID de usuário inválido' });
+    const email = limparEmail(req.body?.email);
+    if (email === null) return res.status(400).json({ erro: 'E-mail inválido' });
+    try {
+        const bloqueio = await verificarGestaoUsuario(req, alvo, { permitirProprio: true });
+        if (bloqueio) return res.status(bloqueio.status).json({ erro: bloqueio.erro });
+        await executeQueryDBPrincipal(
+            'UPDATE USUARIOS SET EMAIL = ?, RECUPERA_HASH = NULL, RECUPERA_EXPIRA = NULL WHERE ID = ? AND MASTER = 0',
+            [email ? encrypt(email) : null, alvo]);
+        // O endereço não vai para o histórico: lá ele ficaria sem criptografia
+        await InserirHistoricoRegistro(req.usuario, 'USUARIOS', 'UPDATE', alvo, { campo: 'EMAIL', novo: email ? 'Alterado' : 'Removido' });
+        return res.status(200).json({ sucesso: true });
+    } catch (err) {
+        return handleError(res, err, 'alterarEmailUsuario');
+    }
+}
+
 export async function alterarNome(req, res) {
     const usuario = paraId(req.body?.usuario);
     const { novonome, updatedAt } = req.body ?? {};
@@ -1012,7 +1037,7 @@ export async function alterarSenha(req, res) {
 
         const novoHash = await bcrypt.hash(novaSenha, SALT_ROUNDS);
         await executeQueryDBPrincipal(
-            'UPDATE USUARIOS SET SENHA = ?, TROCAR_SENHA = 0, TOKEN_VERSION = COALESCE(TOKEN_VERSION, 0) + 1 WHERE ID = ?',
+            'UPDATE USUARIOS SET SENHA = ?, TROCAR_SENHA = 0, TOKEN_VERSION = COALESCE(TOKEN_VERSION, 0) + 1, RECUPERA_HASH = NULL, RECUPERA_EXPIRA = NULL WHERE ID = ?',
             [novoHash, usuario]
         );
 
@@ -1050,7 +1075,7 @@ export async function redefinirSenha(req, res) {
         const temporaria = gerarSenhaTemporaria();
         const hash = await bcrypt.hash(temporaria, SALT_ROUNDS);
         await executeQueryDBPrincipal(
-            'UPDATE USUARIOS SET SENHA = ?, TROCAR_SENHA = 1, TOKEN_VERSION = COALESCE(TOKEN_VERSION, 0) + 1 WHERE ID = ?',
+            'UPDATE USUARIOS SET SENHA = ?, TROCAR_SENHA = 1, TOKEN_VERSION = COALESCE(TOKEN_VERSION, 0) + 1, RECUPERA_HASH = NULL, RECUPERA_EXPIRA = NULL WHERE ID = ?',
             [hash, alvo]
         );
         limparCacheUsuario(alvo);

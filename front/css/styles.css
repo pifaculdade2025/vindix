@@ -192,7 +192,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .login__card h2 { font-size: 28px; font-weight: 700; }
 .login__card > p { color: var(--ink-2); margin: 6px 0 26px; }
 .login__tema { position: absolute; top: 16px; right: 16px; }
-.login__rodape { margin-top: 28px; color: var(--ink-3); font-size: 13px; }
+.login__esqueci { display: block; margin: 18px auto 0; padding: 6px 10px; border: 0; background: none; font: inherit; font-size: 14px; font-weight: 600; color: var(--brand); cursor: pointer; border-radius: var(--r-s); }
+.login__esqueci:hover { text-decoration: underline; }
 .login__recursos-cel { display: none; }
 
 @media (max-width: 860px) {
@@ -409,7 +410,7 @@ html { scrollbar-color: var(--line-strong) transparent; }
   .app { grid-template-columns: var(--rail) minmax(0, 1fr); }
   .cliente { padding: 14px; justify-content: center; }
   .cliente__texto, .nav__group-title, .nav__rotulo, .nav__badge,
-  .usuario__texto, .sidebar__plataforma .vx-logo__word, .sidebar__plataforma span { display: none; }
+  .usuario__texto, .sidebar__plataforma .vx-logo__word, .sidebar__plataforma > span:first-child { display: none; }
   .nav { padding: 12px 10px; }
   .nav__item { justify-content: center; padding: 6px; }
   .usuario { flex-direction: column; }
@@ -1224,9 +1225,31 @@ html.rolagem-travada body { position: fixed; left: 0; right: 0; overflow: hidden
 button, a, label, .btn, .icon-btn, .tabbar__item, .nav__item, .dia-chip, .mes__dia, .bloco { touch-action: manipulation; }
 .tabbar { touch-action: none; }
 @media (max-width: 760px) {
-  /* Menu lateral: rola por dentro quando a tela é baixa, sem mexer na página */
-  .sidebar { overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding-bottom: env(safe-area-inset-bottom); }
-  .sidebar .nav { flex: 0 0 auto; }
+  /* Menu lateral igual ao desktop: só os itens rolam; a clínica no topo e o usuário embaixo ficam fixos */
+  .sidebar { overflow: hidden; }
+  .cliente, .sidebar__rodape { flex-shrink: 0; }
+  .sidebar .nav { min-height: 0; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+  .sidebar__rodape { padding-bottom: calc(12px + env(safe-area-inset-bottom)); }
   .modal { overscroll-behavior: contain; }
   .modal__panel { overscroll-behavior: contain; }
+}
+
+/* ---------- Menu retraído no desktop (só os ícones; no tablet ele já fica assim) ---------- */
+.topbar__retrair { display: none; }
+@media (min-width: 1181px) {
+  .topbar__retrair { display: inline-grid; margin-left: -8px; }
+  html[data-menu="retraido"] .app { grid-template-columns: var(--rail) minmax(0, 1fr); }
+  html[data-menu="retraido"] .cliente { padding: 14px; justify-content: center; }
+  html[data-menu="retraido"] .cliente__texto,
+  html[data-menu="retraido"] .nav__group-title,
+  html[data-menu="retraido"] .nav__rotulo,
+  html[data-menu="retraido"] .nav__badge,
+  html[data-menu="retraido"] .usuario__texto,
+  html[data-menu="retraido"] .sidebar__plataforma .vx-logo__word,
+  html[data-menu="retraido"] .sidebar__plataforma > span:first-child { display: none; }
+  html[data-menu="retraido"] .nav { padding: 12px 10px; scrollbar-width: none; }
+  html[data-menu="retraido"] .nav::-webkit-scrollbar { display: none; }
+  html[data-menu="retraido"] .nav__item { justify-content: center; padding: 6px; }
+  html[data-menu="retraido"] .usuario { flex-direction: column; }
+  html[data-menu="retraido"] .sidebar__plataforma { justify-content: center; }
 }

@@ -202,6 +202,16 @@ export function validarDados(tabela, dados, { parcial = false } = {}) {
 }
 
 // Senha: 8 a 60 caracteres, com pelo menos uma letra e um número
+// E-mail do usuário (vazio = sem e-mail). Devolve null se for inválido; o valor limpo, se não
+export function limparEmail(email) {
+    if (email === null || email === undefined || email === '') return '';
+    if (typeof email !== 'string') return null;
+    const e = email.trim().toLowerCase();
+    if (!e) return '';
+    // Só caracteres comuns de endereço: vírgula, < > e aspas poderiam virar outro destinatário no envio
+    return e.length <= 254 && /^[a-z0-9._%+'-]+@[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(e) ? e : null;
+}
+
 export function senhaInvalida(senha) {
     if (typeof senha !== 'string' || senha.length < 8 || senha.length > 60) {
         return 'A senha deve ter entre 8 e 60 caracteres';

@@ -5,6 +5,7 @@ import { autenticarToken, exigirPermissao } from "./auth.js"
 import * as funcoes from "./funcoes.js";
 import * as clinica from './clinica.js';
 import * as agenda from './agenda.js';
+import * as recuperacao from './recuperacao.js';
 import helmet from 'helmet';
 import compression from 'compression';
 import { tooBusyCheck } from "./too-busy.js";
@@ -26,6 +27,16 @@ const loginSlow = slowDown({
   windowMs: 15 * 60 * 1000,  // 15 minutos
   delayAfter: 3,              // começa a atrasar após 3 tentativas
   delayMs: (hits) => (hits - 3) * 500,  // +500ms por tentativa acima de 3
+});
+
+// Recuperação de senha: poucos pedidos por endereço (cada um envia um e-mail)
+const recuperacaoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 5, standardHeaders: true, legacyHeaders: false,
+  message: { erro: 'Muitos pedidos em pouco tempo. Aguarde alguns minutos.' }
+});
+const recuperacaoCodigoLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 20, standardHeaders: true, legacyHeaders: false,
+  message: { erro: 'Muitas tentativas em pouco tempo. Aguarde alguns minutos.' }
 });
 
 // Troca de foto: poucas por vez (cada uma grava até 24 KB no banco)
@@ -124,6 +135,9 @@ app.use(express.static(path.join(__dirname, '..', '..', 'front'), {
   },
 }));
 
+// Nada do que a API responde (dados de pacientes, tokens) fica guardado no navegador ou em proxies
+app.use((req, res, next) => { res.set('Cache-Control', 'no-store'); next(); });
+
 //ver se o servidor está vivo
 app.get('/health', (req, res) => {
   res.json({ status: 'ok' });
@@ -132,6 +146,9 @@ app.get('/health', (req, res) => {
 //login
 app.post('/login', loginSlow, loginLimiter, funcoes.validarLogin);
 app.post('/logout', autenticarToken, funcoes.logout);
+app.post('/recuperar-senha', recuperacaoLimiter, recuperacao.solicitarRecuperacao);
+app.post('/recuperar-senha/validar', recuperacaoCodigoLimiter, recuperacao.validarCodigoRecuperacao);
+app.post('/recuperar-senha/confirmar', recuperacaoCodigoLimiter, recuperacao.confirmarRecuperacao);
 
 //usuarios
 app.get('/usuarios', autenticarToken, exigirPermissao(1, 2), funcoes.carregarUsuarios);
@@ -148,6 +165,7 @@ app.post('/usuarios', autenticarToken, exigirPermissao(1, 2), funcoes.cadastrarU
   app.put('/usuarios/:id/profissional', autenticarToken, exigirPermissao(1, 2), funcoes.vincularProfissional);
   app.put('/usuarios/:id/permissoes', autenticarToken, exigirPermissao(1, 2), funcoes.definirPermissoes);
   app.put('/usuarios/:id/status', autenticarToken, exigirPermissao(1, 2), funcoes.alterarStatusUsuario);
+  app.put('/usuarios/:id/email', autenticarToken, exigirPermissao(1, 2), funcoes.alterarEmailUsuario);
   //Nome
   app.put('/usuarios/nome', autenticarToken, exigirPermissao(1, 2), funcoes.alterarNome);
   //permissoes do usuario
@@ -245,6 +263,21 @@ app.get('/google/conectar', autenticarToken, exigirPermissao(1), agenda.conectar
 app.get('/google/status', autenticarToken, exigirPermissao(1), agenda.statusGoogle);
 app.get('/google/callback', agenda.callbackGoogle); 
 app.delete('/google/conectar', autenticarToken, exigirPermissao(1), agenda.desconectarGoogle);
+
+// Erros que não passaram pelas rotas (JSON quebrado, corpo grande demais, origem proibida...):
+// a resposta nunca leva o detalhe técnico, que fica só no log do servidor
+app.use((err, req, res, next) => {
+  if (res.headersSent) return next(err);
+  if (err.message === 'Origem não permitida') return res.status(403).json({ erro: 'Origem não permitida' });
+  const status = Number.isInteger(err.status) && err.status >= 400 && err.status < 500 ? err.status : 500;
+  if (status === 413) return res.status(413).json({ erro: 'Conteúdo grande demais' });
+  if (status < 500) return res.status(status).json({ erro: 'Requisição inválida' });
+  console.error(`[${req.method} ${req.path}]`, err);
+  return res.status(500).json({ erro: 'Erro interno do servidor' });
+});
+
+// Um erro inesperado em segundo plano (ex.: envio ao Google) fica no log e não derruba o sistema para todos
+process.on('unhandledRejection', err => console.error('[erro em segundo plano]', err));
 
 /*
 Permissões:
